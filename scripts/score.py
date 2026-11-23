@@ -140,20 +140,30 @@ def main():
             defense[c] = (1 - P["defense_bond_w"]) / len(P["defense_defensive"])
         weights = defense
 
+    def amt20(j):
+        """近 20 日成交额中位数（亿元）：防守类 ETF 没有入选候选池，用它展示流动性。"""
+        if j is None:
+            return None
+        t = len(pn["dates"]) - 1
+        seg = pn["amount"][t - 19:t + 1, j]
+        seg = seg[np.isfinite(seg)]
+        return round(float(np.median(seg)) / 1e8, 2) if len(seg) else None
+
     holdings = []
     for c, w in weights.items():
         j = codes.index(c) if c in codes else None
         nm = names[j] if j is not None else c
-        rank = int(np.where(order == j)[0][0]) + 1 if j is not None and j in order else None
-        sc = float(score[t, j]) if j is not None and np.isfinite(score[t, j]) else None
-        row = {"code": c, "name": nm, "weight": round(w, 3),
+        in_pool = j is not None and bool(ok[j])
+        rank = (int(np.where(order == j)[0][0]) + 1) if in_pool else None
+        sc = float(score[t, j]) if in_pool and np.isfinite(score[t, j]) else None
+        row = {"code": c, "name": nm, "weight": round(w, 3), "in_pool": in_pool,
                "close": float(pn["close"][t, j]) if j is not None else None,
                "score": round(sc, 3) if sc is not None else None,
                "rank": rank,
                "is_new": c not in prev_codes,
                "dist252": round(float(f["dist252"][t, j]), 4) if j is not None and np.isfinite(f["dist252"][t, j]) else None,
                "vol20": round(float(f["vol20"][t, j]), 4) if j is not None and np.isfinite(f["vol20"][t, j]) else None,
-               "amt_yi": round(float(f["amt_ma20"][t, j]) / 1e8, 2) if j is not None and np.isfinite(f["amt_ma20"][t, j]) else None}
+               "amt_yi": amt20(j)}
         holdings.append(row)
 
     # 候选池前 15 名（供展示"打分榜"）

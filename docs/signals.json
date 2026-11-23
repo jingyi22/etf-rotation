@@ -1,6 +1,6 @@
 {
  "asof": "2026-11-20",
- "generated_at": "2026-11-23T10:47:15",
+ "generated_at": "2026-11-23T11:05:01",
  "regime": {
   "risk_on": false,
   "hs300": 3954.56,
@@ -12,49 +12,53 @@
    "code": "511010",
    "name": "国债ETF国泰",
    "weight": 0.6,
+   "in_pool": true,
    "close": 141.41099548339844,
    "score": 1.343,
-   "rank": null,
+   "rank": 3,
    "is_new": false,
    "dist252": 0.0041,
    "vol20": 0.0006,
-   "amt_yi": null
+   "amt_yi": 28.12
   },
   {
    "code": "515300",
    "name": "300红利低波ETF嘉实",
    "weight": 0.133,
+   "in_pool": true,
    "close": 1.4329999685287476,
    "score": 1.426,
    "rank": 2,
    "is_new": false,
    "dist252": 0.0914,
    "vol20": 0.0088,
-   "amt_yi": 2.1
+   "amt_yi": 1.66
   },
   {
    "code": "515450",
    "name": "红利低波50ETF南方",
    "weight": 0.133,
+   "in_pool": true,
    "close": 1.5149999856948853,
    "score": 1.24,
-   "rank": 4,
+   "rank": 5,
    "is_new": false,
    "dist252": 0.0656,
    "vol20": 0.0099,
-   "amt_yi": 2.8
+   "amt_yi": 2.44
   },
   {
    "code": "515100",
    "name": "红利低波100ETF景顺",
    "weight": 0.133,
+   "in_pool": true,
    "close": 1.4850000143051147,
    "score": 1.182,
-   "rank": 5,
+   "rank": 6,
    "is_new": false,
    "dist252": 0.0267,
    "vol20": 0.0067,
-   "amt_yi": 1.19
+   "amt_yi": 1.09
   }
  ],
  "top": [
@@ -194,7 +198,7 @@
    "held": false
   }
  ],
- "universe_size": 25,
+ "universe_size": 26,
  "recent": [],
  "universe": [
   {
@@ -321,6 +325,11 @@
    "code": "159887",
    "name": "银行ETF富国",
    "amt_yi": 1.18
+  },
+  {
+   "code": "511010",
+   "name": "国债ETF国泰",
+   "amt_yi": 34.35
   }
  ]
 }

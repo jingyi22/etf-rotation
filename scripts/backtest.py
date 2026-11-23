@@ -36,14 +36,15 @@ def load_all(P):
         d = _j.load(open(p, encoding="utf-8"))
         bars = {r[0]: r for r in d["fmt"]}
         arr = np.full(len(pn["dates"]), np.nan, dtype=np.float32)
+        amt = np.full(len(pn["dates"]), np.nan, dtype=np.float32)
         for i, dt in enumerate(pn["dates"]):
             b = bars.get(str(dt))
             if b:
                 arr[i] = b[2]
+                amt[i] = b[3]
         for k in ("open", "close"):
             pn[k] = np.column_stack([pn[k], arr])              # 防守 ETF 只用收盘价计算
-        pn["amount"] = np.column_stack([pn["amount"],
-                                        np.full(len(pn["dates"]), np.nan, dtype=np.float32)])
+        pn["amount"] = np.column_stack([pn["amount"], amt])
         codes.append(c)
         pn["names"] = np.append(pn["names"], d["name"])
     pn["codes"] = np.array(codes)
