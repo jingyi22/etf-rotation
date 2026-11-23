@@ -17,7 +17,7 @@ PARAMS = {
     "n_hold": 5,
     "min_hold_days": 0,       # 新买入后至少持有 N 个交易日才会被调出（0=不限制）
     "rank_buffer": 10,        # 已持有 ETF 排名跌出 n_hold+buffer 之外才卖（缓冲是关键经验）
-    "dedupe_rho": 0.95,       # 近 120 日收益相关系数超过该值视为同一指数，只留相关簇里打分最高的一只
+    "dedupe_rho": 0.95,       # 近 120 日收益相关超过该值视为同一指数，只留成交额最大的一只
     "dedupe_window": 120,
     # 因子权重（横截面 z-score 加权），负号=反向
     # 权重来自逐日 Rank IC 研究（scripts/research.py，2015-2026 全样本）：
@@ -30,7 +30,7 @@ PARAMS = {
     # 防守（市场状态）：沪深300 收盘 < MA250 时切 60% 国债ETF + 40% 低波红利
     "defense_ma": 250,
     "defense_bond": "511010",
-    "defense_defensive": ["515300", "515450", "515100"],  # 红利低波类，回撤最小的一只
+    "defense_defensive": ["515300", "515450", "515100"],  # 红利低波类，各 13.3%
     "defense_bond_w": 0.6,
     # 成本（单边，含佣金+滑点）与成交口径
     "cost": 0.001,
