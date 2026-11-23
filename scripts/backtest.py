@@ -47,10 +47,11 @@ def regime(pn, idx, P):
     return risk_on, hs, ma
 
 
-def decide(t, S, f, held, P, codes):
+def decide(t, S, f, held, P, codes, fill_adj=None):
     """t 日收盘的目标持仓（进攻模式）。返回 (picks, order, rank_of)。
     规则：已持有且排名 < n_hold + buffer 的保留；空位按分数从高到低补，
-    跳过与已选 ETF 近 60 日收益相关 > corr_cap 的。"""
+    跳过与已选 ETF 近 60 日收益相关 > corr_cap 的。
+    fill_adj：开盘复核用，{下标: 分数调整}，只影响"补空位"的顺序，不影响保留/卖出。"""
     s = S[t]
     ok = f["tradable"][t] & np.isfinite(s)
     idx = np.where(ok)[0]
@@ -59,6 +60,12 @@ def decide(t, S, f, held, P, codes):
     n, buf = P["n_hold"], P["rank_buffer"]
     picks = [j for j in sorted(held, key=lambda j: rank_of.get(j, 10 ** 6))
              if rank_of.get(j, 10 ** 6) < n + buf][:n]
+    fill_order = order
+    if fill_adj is not None:
+        # 只在排名前 n + buf 的范围内按调整后的分数重排，不会买进原本排名很靠后的
+        head = [j for j in order[: n + buf]]
+        head.sort(key=lambda j: -(s[j] + fill_adj.get(j, 0.0)))
+        fill_order = np.array(head + [j for j in order[n + buf:]], dtype=int)
     R = f["ret"][max(0, t - 59): t + 1]
 
     def corr(a, b):
@@ -70,7 +77,7 @@ def decide(t, S, f, held, P, codes):
         d = np.sqrt((x * x).sum() * (y * y).sum())
         return float((x * y).sum() / d) if d > 0 else 0.0
 
-    for j in order:
+    for j in fill_order:
         if len(picks) >= n:
             break
         if j in picks:
@@ -79,6 +86,21 @@ def decide(t, S, f, held, P, codes):
             continue
         picks.append(j)
     return picks, order, rank_of
+
+
+def open_adjust(t_exec, f, P, w):
+    """开盘复核：执行日 t_exec 集合竞价后已知跳空 gap = open/昨收 - 1。
+    低开得分上调、高开下调：adj = -w × (gap 在候选池内的百分位 - 0.5)。"""
+    O, C = f["open"], f["close"]
+    pool = f["tradable"][t_exec - 1]
+    gap = np.where(pool, O[t_exec] / C[t_exec - 1] - 1, np.nan)
+    v = np.isfinite(gap)
+    if v.sum() < 5:
+        return {}
+    order = np.argsort(gap[v])
+    pct = np.empty(v.sum())
+    pct[order] = np.arange(v.sum()) / max(v.sum() - 1, 1)
+    return {int(j): float(-w * (p - 0.5)) for j, p in zip(np.where(v)[0], pct)}
 
 
 def defense_target(t, f, P, codes):
@@ -96,7 +118,9 @@ def defense_target(t, f, P, codes):
     return wts
 
 
-def run(pn, f, S, idx, P, use_defense=True):
+def run(pn, f, S, idx, P, use_defense=True, open_w=0.0, buy_slip=0.0):
+    """open_w > 0：开盘复核（新买入的空位用执行日集合竞价跳空重排，见 open_adjust）。
+    buy_slip：新买入额外滑点（单边），用于检验开盘复核在更差成交价下是否还成立。"""
     dates = [str(d) for d in pn["dates"]]
     codes = [str(c) for c in pn["codes"]]
     names = [str(n) for n in pn["names"]]
@@ -134,6 +158,8 @@ def run(pn, f, S, idx, P, use_defense=True):
                     r_gap += w * (px_open(t, j) / p0 - 1)
             tv = sum(abs(pending.get(j, 0) - w_prev.get(j, 0)) for j in set(pending) | set(w_prev)) / 2
             r_gap -= tv * P["cost"]
+            if buy_slip:
+                r_gap -= buy_slip * sum(max(pending.get(j, 0) - w_prev.get(j, 0), 0) for j in pending)
             r_int = sum(w * (px_close(t, j) / px_open(t, j) - 1) for j, w in pending.items())
             rets.append((1 + r_gap) * (1 + r_int) - 1)
             turn.append(tv)
@@ -145,7 +171,8 @@ def run(pn, f, S, idx, P, use_defense=True):
         if t >= i1 - 1:
             break
         if risk_on[t]:
-            picks, _, _ = decide(t, S, f, held, P, codes)
+            adj = open_adjust(t + 1, f, P, open_w) if open_w else None
+            picks, _, _ = decide(t, S, f, held, P, codes, fill_adj=adj)
             target = {j: 1.0 / len(picks) for j in picks} if picks else defense_target(t, f, P, codes)
             state_exec = "risk"
         else:

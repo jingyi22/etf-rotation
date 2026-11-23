@@ -39,7 +39,7 @@ jobs:
       - name: Recommend, score matured picks, validate models
         run: python scripts/track.py
 
-      - name: Ledger is append-only
+      - name: Ledgers are append-only
         run: python scripts/check_ledger.py
 
       - name: Backtest current model

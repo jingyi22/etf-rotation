@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
-from config import CHALLENGERS, CHAMPION_INIT, MODEL_RULES, PARAMS, TRACK_DIR
+from config import CHALLENGERS, CHAMPION_INIT, MODEL_RULES, PARAMS, TRACK_DIR, UNIVERSE_VERSION
 import backtest as B
 import common as CM
 import features as F
@@ -94,7 +94,7 @@ def recommend(pn, f, Rf, idx, state, prev_hold_codes, prev_mode="risk"):
         return out
 
     ranking = []
-    for r, j in enumerate(order[:30]):
+    for r, j in enumerate(order[:max(30, P["n_hold"] + P["rank_buffer"])]):
         ranking.append({"rank": r + 1, "code": codes[j], "name": names[j],
                         "score": round(float(S[t, j]), 4), "close": round(float(f["close"][t, j]), 4),
                         "amt_yi": round(float(f["a20"][t, j]) / 1e8, 2),
@@ -122,7 +122,22 @@ def recommend(pn, f, Rf, idx, state, prev_hold_codes, prev_mode="risk"):
         ix = np.where(ok)[0]
         top = ix[np.argsort(-Sm[t, ix])[:5]]
         others[m["name"]] = [codes[j] for j in top]
+    head = [j for j in order[: P["n_hold"] + P["rank_buffer"]]]
+    R = f["ret"][max(0, t - 59): t + 1]
+    corr = {}
+    for a_ in head:
+        for b_ in head:
+            if a_ < b_:
+                x, y = R[:, a_], R[:, b_]
+                v = np.isfinite(x) & np.isfinite(y)
+                if v.sum() >= 30:
+                    cc = np.corrcoef(x[v], y[v])[0, 1]
+                    if np.isfinite(cc) and cc > P["corr_cap"]:
+                        corr[f"{codes[a_]}|{codes[b_]}"] = round(float(cc), 3)
+    open_ctx = {"kept": [codes[j] for j in picks if j in held], "head": [codes[j] for j in head],
+                "high_corr_pairs": corr, "n_hold": P["n_hold"], "risk_on": bool(risk_on[t])}
     return {
+        "open_ctx": open_ctx,
         "signal_date": dates[t], "exec": "下一交易日开盘", "model": champ["name"],
         "mode": mode, "hs300": round(float(hs[t]), 2), "ma250": round(float(ma[t]), 2) if np.isfinite(ma[t]) else None,
         "pool": int(f["tradable"][t].sum()),
@@ -183,6 +198,51 @@ def score_predictions(preds, pn, f, idx):
             }
         rows.append(row)
     return rows
+
+
+def score_open_reviews(preds, pn, f):
+    """开盘复核台账 vs 收盘版：同一交易日，从当天开盘价买入，持有 1/5/10 日后开盘卖出（复核版按集合竞价价买入，
+    收盘版也按同一开盘价，差别只来自持仓不同）。"""
+    path = os.path.join(TRACK_DIR, "open_review.jsonl")
+    if not os.path.exists(path):
+        return {"n": 0, "rows": [], "summary": {}}
+    reviews = [json.loads(x) for x in open(path, encoding="utf-8") if x.strip()]
+    by_sig = {p["signal_date"]: p for p in preds}
+    dates = [str(d) for d in pn["dates"]]
+    di = {d: i for i, d in enumerate(dates)}
+    ci = {str(c): j for j, c in enumerate(pn["codes"])}
+    O = f["open"]
+    rows = []
+    for rv in reviews:
+        a = di.get(rv["trade_date"])
+        p = by_sig.get(rv["signal_date"])
+        if a is None or p is None:
+            rows.append({"trade_date": rv["trade_date"], "note": rv["note"], "h": {}})
+            continue
+        row = {"trade_date": rv["trade_date"], "note": rv["note"], "changed": rv["note"] == "已调整", "h": {}}
+        for h in MODEL_RULES["horizons"]:
+            z = a + h
+            if z >= len(dates):
+                continue
+
+            def port(hold):
+                xs = [(O[z, ci[x["code"]]] / O[a, ci[x["code"]]] - 1, x["weight"]) for x in hold
+                      if x["code"] in ci and np.isfinite(O[a, ci[x["code"]]]) and np.isfinite(O[z, ci[x["code"]]])]
+                return float(sum(r * w for r, w in xs) / sum(w for _, w in xs)) if xs else None
+
+            row["h"][str(h)] = {"open": port(rv["hold"]), "close": port(p["hold"])}
+        rows.append(row)
+    summ = {}
+    for h in MODEL_RULES["horizons"]:
+        xs = [r["h"][str(h)] for r in rows if str(h) in r["h"] and None not in r["h"][str(h)].values()]
+        ch = [r["h"][str(h)] for r in rows if r.get("changed") and str(h) in r["h"]
+              and None not in r["h"][str(h)].values()]
+        summ[str(h)] = {"n": len(xs), "n_changed": len(ch),
+                        "open": float(np.mean([x["open"] for x in xs])) if xs else None,
+                        "close": float(np.mean([x["close"] for x in xs])) if xs else None,
+                        "diff_changed": float(np.mean([x["open"] - x["close"] for x in ch])) if ch else None}
+    return {"n": len(reviews), "n_changed": sum(1 for r in reviews if r["note"] == "已调整"),
+            "rows": rows[-15:][::-1], "summary": summ}
 
 
 def summarize(rows):
@@ -306,6 +366,12 @@ def main():
     val = validate(pn, f, Rf, state)
     if state.get("since") is None:
         state["since"] = last
+    if state.get("universe") != UNIVERSE_VERSION:
+        state["history"].append({"date": last, "event": "universe", "from": state.get("universe"),
+                                 "to": UNIVERSE_VERSION,
+                                 "reason": f"候选池改为{UNIVERSE_VERSION}：原 1000 万门槛下的超额主要来自冷门 ETF，"
+                                           f"在流动性池重新比较 8 个候选后保留「{state['champion']['name']}」，中期动量加入挑战者"})
+        state["universe"] = UNIVERSE_VERSION
     save_state(state)
 
     # 2) 今日推荐（幂等：同一信号日已记录则沿用已记录的持仓，不改写台账）
@@ -339,6 +405,7 @@ def main():
 
     sim = simulated_accuracy(pn, f, Rf, state)
     out = {"recommendation": rec, "validation": val, "state": state, "simulated": sim,
+           "open_review": score_open_reviews(preds, pn, f),
            "live": {"summary": summ, "n": len(preds), "first": preds[0]["signal_date"] if preds else None,
                     "recent": rows[-30:][::-1]}}
     json.dump(out, open(os.path.join(os.path.dirname(PRED_PATH), "..", "data", "daily.json"), "w",

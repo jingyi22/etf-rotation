@@ -451,6 +451,77 @@ def section_live(daily):
   </section>"""
 
 
+def beat_range(sim):
+    """留出期前 5 名跑赢候选池中位数的比例范围（1/5/10 日），页面文字统一引用这里，不写死数字。"""
+    v = [x["top5_beat_med"] for x in sim["by"]["holdout"].values() if x.get("top5_beat_med") is not None]
+    return f"{min(v) * 100:.0f}–{max(v) * 100:.0f}%" if v else "—"
+
+
+def section_open(daily):
+    """开盘复核：今日结果由浏览器读取 open.json（09:26 推送，不需要重建页面），历史对比由 CI 每日计算。"""
+    o = daily.get("open_review") or {"n": 0, "rows": [], "summary": {}}
+    rows = []
+    for r in o["rows"]:
+        cells = ""
+        for h in ("1", "5", "10"):
+            x = r["h"].get(h)
+            if not x or None in x.values():
+                cells += '<td class="r muted">待兑现</td>'
+                continue
+            d = x["open"] - x["close"]
+            cells += (f'<td class="r">{signed_pct(x["open"])}<div class="muted" style="font-size:11.5px">'
+                      f'收盘版 {signed_pct(x["close"])}，差 <span{tone(d)}>{signed_pct(d)}</span></div></td>')
+        rows.append(f'<tr><td style="white-space:nowrap"><code>{r["trade_date"]}</code></td><td>{E(r["note"])}</td>{cells}</tr>')
+    body = "".join(rows) or '<tr><td colspan="5" class="muted">还没有开盘复核记录。第一次复核在下一个交易日 09:26 之后。</td></tr>'
+    s5 = o["summary"].get("5") or {}
+    sm = (f'已复核 {o["n"]} 个交易日，其中 {o.get("n_changed", 0)} 天调整了持仓。'
+          + (f'调整过的日子里，开盘复核版持有 5 日比收盘版平均 {signed_pct(s5["diff_changed"])}（{s5["n_changed"]} 天已兑现）。'
+             if s5.get("diff_changed") is not None else "调整日的收益对比要等兑现后才有。"))
+    return f"""
+  <section class="card" id="open">
+    <div class="card-head"><div><h2>开盘复核 · 09:26 集合竞价后</h2>
+      <p class="sub">收盘给出的推荐里，需要新买入的 ETF 如果集合竞价高开超过 2%，就不追，换成下一名；继续持有和卖出不变；防守模式不调整。回测（日均成交额 ≥ 1 亿的 ETF）里这条规则在开发期几乎没触发，留出期略有帮助（日收益差 t=+0.67，不显著）。"低开优先买"那种更激进的调整在开发期扣掉额外滑点后变差，没有采用。</p></div></div>
+    <div id="open-today" data-signal="{E(daily['recommendation']['signal_date'])}"><p class="muted">正在读取今日开盘复核…</p></div>
+    <p class="sub" style="margin-top:12px">{sm}</p>
+    <div style="overflow-x:auto"><table style="margin-top:8px">
+      <thead><tr><th>交易日</th><th>复核结果</th><th class="r">复核版 1 日</th><th class="r">5 日</th><th class="r">10 日</th></tr></thead>
+      <tbody>{body}</tbody></table></div>
+  </section>"""
+
+
+OPEN_JS = r"""
+(function(){
+  var box=document.getElementById('open-today'); if(!box) return;
+  var sig=box.getAttribute('data-signal');
+  function el(t,c,txt){var e=document.createElement(t); if(c) e.className=c; if(txt!=null) e.textContent=txt; return e;}
+  fetch('open.json?t='+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(o){
+    box.textContent='';
+    if(o.signal_date!==sig){
+      box.appendChild(el('p','muted','今日（'+sig+' 收盘信号之后的交易日）开盘复核尚未运行，最近一次是 '+o.trade_date+'。'));
+      return;
+    }
+    var p=el('p'); p.appendChild(el('b',null,o.trade_date+' '+o.quote_time+' 复核：'+o.note+'。'));
+    p.appendChild(document.createTextNode(' 规则：'+o.rule)); box.appendChild(p);
+    var t=el('table'); var th=el('thead'); var tr=el('tr');
+    ['代码','名称','权重','竞价涨跌','收盘排名'].forEach(function(h,i){ var c=el('th',i>1?'r':null,h); tr.appendChild(c); });
+    th.appendChild(tr); t.appendChild(th); var tb=el('tbody');
+    o.hold.forEach(function(h){
+      var r=el('tr'); var c=el('td'); c.appendChild(el('code',null,h.code)); r.appendChild(c);
+      var n=el('td'); n.appendChild(el('span','nm',h.name)); if(h.changed){ n.appendChild(el('span','badge new','开盘补位')); } r.appendChild(n);
+      r.appendChild(el('td','r',Math.round(h.weight*100)+'%'));
+      r.appendChild(el('td','r',h.gap==null?'—':((h.gap>=0?'+':'')+(h.gap*100).toFixed(2)+'%')));
+      r.appendChild(el('td','r',h.rank==null?'—':String(h.rank)));
+      tb.appendChild(r);
+    });
+    t.appendChild(tb); box.appendChild(t);
+    if(o.skipped && o.skipped.length){
+      box.appendChild(el('p','facts','跳过：'+o.skipped.map(function(s){return s.name+'（'+s.why+'）';}).join('、')));
+    }
+  }).catch(function(){ box.textContent=''; box.appendChild(el('p','muted','还没有开盘复核记录。')); });
+})();
+"""
+
+
 def section_accuracy(daily):
     sim = daily["simulated"]
     a, z = sim["segments"]["dev"]
@@ -458,14 +529,14 @@ def section_accuracy(daily):
     return f"""
   <section class="card" id="accuracy">
     <div class="card-head"><div><h2>历史准确度（模拟逐日推荐）</h2>
-      <p class="sub">把当前模型放回历史，每天都按同样规则出一次推荐，统计之后 1/5/10 个交易日的表现。开发期（{a[:4]}–{int(h0[:4]) - 1}）用来选模型；留出期（{h0[:4]} 起）选模型时没有看过，更接近真实水平。</p></div></div>
+      <p class="sub">把当前模型放回历史，每天都按同样规则出一次推荐，统计之后 1/5/10 个交易日的表现（只计日均成交额 ≥ 1 亿的 ETF）。开发期（{a[:4]}–{int(h0[:4]) - 1}）用来选模型；留出期（{h0[:4]} 起）选模型时没有看过，更接近真实水平。</p></div></div>
     <h3 class="sec" style="margin-top:0">留出期 {h0[:4]} 起（未参与模型选择）</h3>
     {acc_table(sim['by']['holdout'], '')}
     <details><summary>开发期 {a[:4]}–{int(h0[:4]) - 1}（参与了模型选择，数字偏乐观）</summary>
     {acc_table(sim['by']['dev'], '')}
     </details>
     <ul class="notes">
-      <li><b>怎么读</b>：随机挑 5 只，"跑赢候选池中位数"的期望是 50%；模型在留出期大约 53–55%。这是一个小但稳定的优势，不是"高准确率"。单只 ETF 一两天的涨跌主要由市场整体决定，任何模型都很难超过 60%。</li>
+      <li><b>怎么读</b>：随机挑 5 只，"跑赢候选池中位数"的期望是 50%；模型在留出期是 {beat_range(sim)}，<b>与随机差别很小</b>。候选池限定为日均成交额 ≥ 1 亿的 ETF 后，价量因子的排序能力很弱；单只 ETF 一两天的涨跌主要由市场整体决定。</li>
       <li><b>Rank IC</b>：模型分数与未来收益排名的相关系数，0 表示没有预测力。量化选股里 0.03–0.05 已属于可用水平。</li>
     </ul>
   </section>"""
@@ -486,7 +557,7 @@ def section_validation(daily):
     hist = []
     for hst in reversed(state["history"][-8:]):
         hist.append(f'<li><code>{E(hst["date"] or "建站")}</code> {E(hst.get("reason", ""))}'
-                    + (f'（{E(hst["from"])} → {E(hst["to"])}）' if hst.get("from") else "") + "</li>")
+                    + (f'（{E(hst["from"])} → {E(hst["to"])}）' if hst.get("event") == "promote" else "") + "</li>")
     dec = val.get("decision")
     today = (f'<p class="banner" style="margin:10px 0 0">今日自动晋级：{E(dec["from"])} → {E(dec["to"])}。{E(dec["reason"])}</p>'
              if dec else '<p class="sub" style="margin-top:10px">今日检查结果：没有挑战者满足晋级条件，模型保持不变。</p>')
@@ -526,7 +597,7 @@ def section_backtest(bt):
     <div class="card-head"><div><h2>组合回测（当前模型）</h2>
       <p class="sub">按推荐实际操作的结果：收盘出信号、次日开盘成交、单边成本 {bt['params']['cost'] * 100:.1f}%、跌破年线切防守。两条线都从 1.0 起算。</p></div></div>
     <div class="kpis" style="margin:0 0 18px">
-      {chip("留出期年化（2022 起）", f"{ho['cagr'] * 100:.1f}%", f"沪深300 同期 {ho['bench_cagr'] * 100:+.1f}%")}
+      {chip(f"留出期年化（{bt['params']['holdout_start'][:4]} 起）", f"{ho['cagr'] * 100:.1f}%", f"沪深300 同期 {ho['bench_cagr'] * 100:+.1f}%")}
       {chip("留出期最大回撤", f"{ho['mdd'] * 100:.1f}%", f"沪深300 {ho['bench_mdd'] * 100:.1f}%")}
       {chip("完整区间年化", f"{st['cagr'] * 100:.1f}%", f"{bt['start'][:4]}–{bt['end'][:4]}，回撤 {st['mdd'] * 100:.1f}%")}
       {chip("年单边换手", f"{st['turnover']:.1f} 倍", f"已扣 {bt['params']['cost'] * 100:.1f}% 单边成本")}
@@ -545,6 +616,15 @@ def section_backtest(bt):
   </section>"""
 
 
+def defense_note(bt):
+    """防守开关的作用，按回测数字自动生成，不写死结论。"""
+    out = []
+    for per in bt["periods"][1:]:
+        out.append(f"{per['label']}：有防守 年化 {per['cagr'] * 100:+.1f}% / 回撤 {per['mdd'] * 100:.1f}%，"
+                   f"不防守 {per['no_defense_cagr'] * 100:+.1f}% / {per['no_defense_mdd'] * 100:.1f}%")
+    return "；".join(out) + "。熊市（2022–2023）里防守把回撤压低了一半，牛市里几乎没有代价。"
+
+
 def section_method(bt):
     p = bt["params"]
     return f"""
@@ -556,7 +636,8 @@ def section_method(bt):
           <li><b>数据</b>：新浪财经 ETF 日线（份额折算处按价格跳变修补）与沪深300 日线，每个交易日收盘后自动更新。</li>
           <li><b>候选池</b>：只做 A 股股票型 ETF（剔除货币、债券、商品、跨境）；近 20 日日均成交额 ≥ {p['min_amount'] / 1e4:.0f} 万元；上市满 {p['min_history']} 个交易日；同一指数（名称中"ETF"之前相同）每天只留成交额最大的一只。全部按当天能看到的数据判断，不用未来信息。</li>
           <li><b>因子</b>：14 个价量特征（各周期涨跌、距均线、距高点、波动、成交额）。每天在候选池内转成百分位，模型只比较"同一天谁更好"，不预测大盘涨跌。</li>
-          <li><b>模型选择</b>：2016–2021 为开发期，比较单因子 IC、候选池门槛、8 个组合方案后选定当前模型；2022 起为留出期，只用来检验，选模型时没有看过。</li>
+          <li><b>模型选择</b>：{p['dev_start'][:4]}–{int(p['holdout_start'][:4]) - 1} 为开发期，比较单因子 IC 与 8 个组合方案后选定当前模型；{p['holdout_start'][:4]} 起为留出期，只用来检验，选模型时没有看过。（1 亿门槛下 2019 年以前每天只有 3–9 只候选，无法检验排序，所以开发期从 2020 年开始。）</li>
+          <li><b>开盘复核</b>：每个交易日 09:26 集合竞价后，对需要新买入的 ETF 检查开盘价，高开超过 2% 的不追、由下一名补位；继续持有与卖出不变。与收盘版分别记账、到期对比。</li>
           <li><b>每日验证</b>：当前模型和挑战者每天都记录推荐，用最近约两年的已兑现数据比较 10 日 Rank IC，挑战者显著更好（t ≥ 2.5）才替换；变更自动记录在页面上。</li>
           <li><b>成交与防守</b>：收盘出信号、下一交易日开盘调仓，单边成本 {p['cost'] * 100:.1f}%；沪深300 低于 {p['defense_ma']} 日均线时换为 {p['defense_bond_w'] * 100:.0f}% 国债 ETF + {100 - p['defense_bond_w'] * 100:.0f}% 红利低波 ETF。</li>
         </ul>
@@ -564,8 +645,9 @@ def section_method(bt):
       <div>
         <h2>局限</h2>
         <ul class="notes">
-          <li><b>预测力很弱</b>：留出期前 5 名跑赢候选池中位数的比例约 53–55%，随机为 50%。它能在大量交易日上累积出一点优势，不能保证任何一天、一周赚钱。</li>
-          <li><b>防守开关贡献了大部分回撤控制</b>：不用防守时留出期回撤明显更大，见回测表最后两列。</li>
+          <li><b>选股能力弱</b>：在流动性好的 ETF 里，前 5 名跑赢候选池中位数的比例接近 50%（见"历史准确度"）。回测收益的大头来自持有站上年线、低波动的品种，以及熊市里的年线防守，而不是精确选中涨得最多的那只。</li>
+          <li><b>风格偏防御</b>：模型偏好红利、银行、低波品种。科技、成长领涨的反弹日会明显跑输，例如 2026-11-23 候选池平均涨 1.4%，推荐组合跌 0.4%。</li>
+          <li><b>防守开关</b>：{defense_note(bt)}</li>
           <li><b>幸存者偏差</b>：候选池来自今天仍能在新浪取到行情的 ETF，已清盘的没有进入历史。</li>
           <li><b>实盘记录才刚开始</b>：页面上的"历史准确度"是模拟，"实盘推荐记录"从台账建立当天起累计，样本足够之前请以前者为参考、以后者为准。</li>
           <li><b>未模拟冲击成本</b>，不处理涨跌停与停牌排队。</li>
@@ -582,7 +664,7 @@ def main():
     rec = daily["recommendation"]
     gen = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
     nav = '<nav class="toc">' + "".join(
-        f'<a href="#{a}">{b}</a>' for a, b in (("today", "今日推荐"), ("rank", "评分榜"), ("live", "实盘记录"),
+        f'<a href="#{a}">{b}</a>' for a, b in (("today", "今日推荐"), ("open", "开盘复核"), ("rank", "评分榜"), ("live", "实盘记录"),
                                                 ("accuracy", "历史准确度"), ("validation", "自动验证"),
                                                 ("backtest", "组合回测"), ("method", "方法与局限"))) + "</nav>"
     chart_data = json.dumps({"nav": bt["curve"], "dd": bt["dd"]}, ensure_ascii=False)
@@ -600,7 +682,7 @@ def main():
   <header class="top">
     <div>
       <h1>ETF 轮动 · 每日推荐</h1>
-      <p class="sub">每个交易日收盘后按模型排名给出下一交易日开盘的持仓；推荐写入台账、到期自动验证；每日比较挑战者，显著更好才替换模型</p>
+      <p class="sub">收盘后按模型给出下一交易日的持仓，09:26 集合竞价后再做一次开盘复核；推荐写入台账、到期自动验证；每日比较挑战者，显著更好才替换模型</p>
     </div>
     <div style="text-align:right">
       <div class="updated">信号日 {E(rec['signal_date'])} · 页面生成 {E(gen)}（北京时间）</div>
@@ -610,9 +692,10 @@ def main():
   {nav}
   <div class="banner">
     <div><b>这是模型推荐与统计记录，不是投资建议。</b>
-    模型在留出期只有很弱的预测优势，任何一天、一周都可能亏钱；过去的表现不代表未来，本站不承诺任何收益。</div>
+    在流动性好的 ETF 里模型几乎没有选股优势，主要作用是持有趋势向上、低波动的品种并在熊市防守；任何一天、一周都可能亏钱。过去的表现不代表未来，本站不承诺任何收益。</div>
   </div>
   {section_today(daily, bt)}
+  {section_open(daily)}
   {section_ranking(daily)}
   {section_live(daily)}
   {section_accuracy(daily)}
@@ -626,6 +709,7 @@ def main():
 </div>
 <script>window.__CHART__={chart_data};</script>
 <script>{JS}</script>
+<script>{OPEN_JS}</script>
 </body>
 </html>
 """
@@ -633,7 +717,7 @@ def main():
     with open(os.path.join(DOCS_DIR, "index.html"), "w", encoding="utf-8") as fh:
         fh.write(page)
     with open(os.path.join(DOCS_DIR, "today.json"), "w", encoding="utf-8") as fh:
-        json.dump({k: rec[k] for k in ("signal_date", "exec", "model", "mode", "hold", "sells", "ranking")},
+        json.dump({k: rec[k] for k in ("signal_date", "exec", "model", "mode", "hold", "sells", "ranking", "open_ctx")},
                   fh, ensure_ascii=False, indent=1)
     sig = os.path.join(DOCS_DIR, "signals.json")
     if os.path.exists(sig):

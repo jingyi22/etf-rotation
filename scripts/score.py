@@ -43,7 +43,8 @@ def main():
     dcurve = [{"date": res["dates"][i], "dd": round(float(dd[i]), 5)}
               for i in list(range(0, len(nav), step)) + [len(nav) - 1]]
     periods = []
-    for label, key in (("完整区间", "all"), ("开发期 2016–2021", "dev"), ("留出期 2022 起", "holdout")):
+    d0, h0 = P["dev_start"][:4], P["holdout_start"][:4]
+    for label, key in (("完整区间", "all"), (f"开发期 {d0}–{int(h0) - 1}", "dev"), (f"留出期 {h0} 起", "holdout")):
         s, s2 = ev[key], ev_nd[key]
         periods.append({"label": label, "cagr": s["cagr"], "mdd": s["mdd"], "sharpe": s["sharpe"],
                         "node_win": s["node_win"], "node_beat": s["node_beat"], "turnover": s["turnover"],

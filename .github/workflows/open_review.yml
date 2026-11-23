@@ -1,0 +1,37 @@
+name: Open review (fallback)
+
+# 主路径是本机计划任务 09:26 运行 tools/open_review_task.cmd。
+# 这里是兜底：电脑没开时由 GitHub 补跑。GitHub 定时任务常延迟 10-30 分钟，
+# 补跑时开盘价依然是集合竞价价（规则判定不受影响），台账记录实际复核时间。
+# 本机已经做过当天复核时，脚本发现台账里已有当天记录会直接退出，不会重复写。
+on:
+  schedule:
+    - cron: "45 1 * * 1-5"   # 北京时间 09:45
+    - cron: "15 2 * * 1-5"   # 北京时间 10:15（再兜一次）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Open review
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            python scripts/open_review.py && break
+            code=$?; [ "$code" -ne 2 ] && exit $code
+            echo "行情获取失败，60 秒后重试"; sleep 60
+          done
