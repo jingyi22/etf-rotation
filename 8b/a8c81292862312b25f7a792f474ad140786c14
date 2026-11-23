@@ -1,0 +1,20 @@
+scripts/fetch_data.py
+  s_b2b219da2f9426::t_7ce481f1297ab8 40-42,55-56,60
+  s_b2b219da2f9426::t_1d431c91c77bb8 43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "8ba8c81292862312b25f7a792f474ad140786c14",
+  "prompts": {},
+  "sessions": {
+    "s_b2b219da2f9426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b5a53fc-0c61-41ca-81b1-645cd463c7df",
+        "model": "deepseek-v4-1-flash-261017"
+      },
+      "human_author": "jingyi22 <jingyi22@users.noreply.github.com>"
+    }
+  }
+}
