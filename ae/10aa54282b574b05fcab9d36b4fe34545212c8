@@ -1,0 +1,19 @@
+.github/workflows/update.yml
+  s_b2b219da2f9426::t_ba4f1c237cd412 48-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "ae10aa54282b574b05fcab9d36b4fe34545212c8",
+  "prompts": {},
+  "sessions": {
+    "s_b2b219da2f9426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b5a53fc-0c61-41ca-81b1-645cd463c7df",
+        "model": "deepseek-v4-1-flash-261017"
+      },
+      "human_author": "jingyi22 <jingyi22@users.noreply.github.com>"
+    }
+  }
+}
