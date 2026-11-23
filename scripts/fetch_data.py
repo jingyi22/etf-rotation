@@ -37,10 +37,27 @@ def last_trade_date():
     return d.isoformat()
 
 
+def index_daily(symbol):
+    """沪深300 等指数日线。akshare 新版本把 stock_zh_index_daily 重命名为
+    index_zh_daily_sina，两个都兼容。"""
+    fns = [getattr(ak, "index_zh_daily_sina", None), getattr(ak, "stock_zh_index_daily", None)]
+    err = None
+    for fn in fns:
+        if fn is None:
+            continue
+        try:
+            df = fn(symbol=symbol)
+            df = df.rename(columns={c: c.lower() for c in df.columns})
+            return df[["date", "open", "high", "low", "close"]]
+        except Exception as e:  # noqa: BLE001
+            err = e
+    raise RuntimeError(f"指数 {symbol} 拉取失败: {err}")
+
+
 def fetch_index(symbol, name):
     """沪深300等指数日线，缓存到 data/index_{symbol}.json。"""
     path = os.path.join(ROOT, "data", f"index_{symbol}.json")
-    df = ak.stock_zh_index_daily(symbol=symbol)[["date", "open", "high", "low", "close"]]
+    df = index_daily(symbol)
     df["date"] = df["date"].astype(str)
     df = df[df["date"] >= "2013-01-01"]          # 只保留回测起点前两年，控制仓库体积
     df = df.astype({"open": float, "high": float, "low": float, "close": float})            .round({"open": 2, "high": 2, "low": 2, "close": 2})
