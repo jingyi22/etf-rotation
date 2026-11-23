@@ -109,6 +109,8 @@ def main():
 
     score, zs = CM.factor_score(f, P)
     ok = f["tradable"][t] & ~np.isnan(score[t])
+    if P["defense_bond"] in codes:          # 国债 ETF 只作防守工具
+        ok[codes.index(P["defense_bond"])] = False
     idxs = np.where(ok)[0]
     order = idxs[np.argsort(-score[t, idxs])]
     prev_hold = res["log"][-1]["hold"] if res["log"] else []

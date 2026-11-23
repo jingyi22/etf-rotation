@@ -110,6 +110,11 @@ def run(pn, P, dates, hs300=None, verbose=False):
     for c in P["defense_defensive"]:
         defense[c] = (1 - P["defense_bond_w"]) / len(P["defense_defensive"])
     defense_idx = [codes.index(c) for c in defense if c in codes]
+    # 国债 ETF 只作防守工具，不参与进攻选样；红利低波本身是股票 ETF，
+    # 站上年线且低波时入选符合规则，照常参与排名
+    sel_tradable = f["tradable"].copy()
+    if P["defense_bond"] in codes:
+        sel_tradable[:, codes.index(P["defense_bond"])] = False
 
     def defense_target(t):
         """防守仓位；防御资产尚未上市或当日无价格的，权重顺延给国债ETF。"""
@@ -186,7 +191,7 @@ def run(pn, P, dates, hs300=None, verbose=False):
         if risky[t]:
             def min_hold_ok(j, _t=t):
                 return (P["min_hold_days"] == 0) or (_t - hold_counter.get(j, -10 ** 6) >= P["min_hold_days"])
-            picked, rank, order = rank_picks(score, f["tradable"], t, P["n_hold"], held,
+            picked, rank, order = rank_picks(score, sel_tradable, t, P["n_hold"], held,
                                              P["rank_buffer"], min_hold_ok)
             target = {j: 1.0 / P["n_hold"] for j in picked}
             state = "risk"
