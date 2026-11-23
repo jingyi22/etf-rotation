@@ -348,11 +348,14 @@ def section_today(daily, bt):
         <p class="facts">卖出：{sells}</p>
       </div>
     </div>
-    <div style="overflow-x:auto">
+    <p id="today-note" class="sub" style="margin:12px 0 0;display:none"></p>
+    <div id="today-wrap" style="overflow-x:auto">
+    </div>
+    <noscript><div style="overflow-x:auto">
     <table style="margin-top:14px">
       <thead><tr><th>代码</th><th>名称</th><th class="r">目标权重</th><th class="r hidesm">模型排名</th><th class="r hidesm">信号日收盘</th></tr></thead>
       <tbody>{''.join(rows)}</tbody>
-    </table></div>
+    </table></div></noscript>
   </section>"""
 
 
@@ -486,7 +489,7 @@ def section_open(daily):
   <section class="card" id="open">
     <div class="card-head"><div><h2>开盘复核 · 09:26 集合竞价后</h2>
       <p class="sub">收盘给出的推荐里，需要新买入的 ETF 如果集合竞价高开超过 2%，就不追，换成下一名；继续持有和卖出不变；防守模式不调整。回测（日均成交额 ≥ 1 亿的 ETF）里这条规则在开发期几乎没触发，留出期略有帮助（日收益差 t=+0.67，不显著）。"低开优先买"那种更激进的调整在开发期扣掉额外滑点后变差，没有采用。</p></div></div>
-    <div id="open-today" data-signal="{E(daily['recommendation']['signal_date'])}"><p class="muted">正在读取今日开盘复核…</p></div>
+    <div id="open-today" data-signal="{E(daily['recommendation']['signal_date'])}" data-mode="{E(daily['recommendation']['mode'])}"><p class="muted">正在读取今日开盘复核…</p></div>
     <p class="sub" style="margin-top:12px">{sm}</p>
     <div style="overflow-x:auto"><table style="margin-top:8px">
       <thead><tr><th>交易日</th><th>复核结果</th><th class="r">复核版 1 日</th><th class="r">5 日</th><th class="r">10 日</th></tr></thead>
@@ -498,29 +501,49 @@ OPEN_JS = r"""
 (function(){
   var box=document.getElementById('open-today'); if(!box) return;
   var sig=box.getAttribute('data-signal');
+  var mode=box.getAttribute('data-mode');
   function el(t,c,txt){var e=document.createElement(t); if(c) e.className=c; if(txt!=null) e.textContent=txt; return e;}
+  function table(head, rows){
+    var t=el('table'); t.style.marginTop='14px'; var th=el('thead'), tr=el('tr');
+    head.forEach(function(h){ tr.appendChild(el('th',h[1]?'r':null,h[0])); }); th.appendChild(tr); t.appendChild(th);
+    var tb=el('tbody'); rows.forEach(function(r){ var x=el('tr'); r.forEach(function(c,i){ x.appendChild(el('td',i?((r.r||{})[i]?'r':null):null,c)); }); tb.appendChild(x); });
+    t.appendChild(tb); return t;
+  }
   fetch('open.json?t='+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(o){
     box.textContent='';
-    if(o.signal_date!==sig){
-      box.appendChild(el('p','muted','今日（'+sig+' 收盘信号之后的交易日）开盘复核尚未运行，最近一次是 '+o.trade_date+'。'));
-      return;
-    }
-    var p=el('p'); p.appendChild(el('b',null,o.trade_date+' '+o.quote_time+' 复核：'+o.note+'。'));
-    p.appendChild(document.createTextNode(' 规则：'+o.rule)); box.appendChild(p);
-    var t=el('table'); var th=el('thead'); var tr=el('tr');
-    ['代码','名称','权重','竞价涨跌','收盘排名'].forEach(function(h,i){ var c=el('th',i>1?'r':null,h); tr.appendChild(c); });
-    th.appendChild(tr); t.appendChild(th); var tb=el('tbody');
-    o.hold.forEach(function(h){
-      var r=el('tr'); var c=el('td'); c.appendChild(el('code',null,h.code)); r.appendChild(c);
-      var n=el('td'); n.appendChild(el('span','nm',h.name)); if(h.changed){ n.appendChild(el('span','badge new','开盘补位')); } r.appendChild(n);
-      r.appendChild(el('td','r',Math.round(h.weight*100)+'%'));
-      r.appendChild(el('td','r',h.gap==null?'—':((h.gap>=0?'+':'')+(h.gap*100).toFixed(2)+'%')));
-      r.appendChild(el('td','r',h.rank==null?'—':String(h.rank)));
-      tb.appendChild(r);
-    });
-    t.appendChild(tb); box.appendChild(t);
-    if(o.skipped && o.skipped.length){
-      box.appendChild(el('p','facts','跳过：'+o.skipped.map(function(s){return s.name+'（'+s.why+'）';}).join('、')));
+    var mine = o.signal_date===sig && o.mode===mode;
+    if(mine){
+      var p=el('p'); p.appendChild(el('b',null,o.trade_date+' '+o.quote_time+' 复核：'+o.note+'。'));
+      p.appendChild(document.createTextNode(' 规则：'+o.rule)); box.appendChild(p);
+      var t=table([['代码',0],['名称',0],['权重',1],['竞价涨跌',1],['收盘排名',1]], o.hold.map(function(h){
+        return [h.code, h.name, Math.round(h.weight*100)+'%',
+                h.gap==null?'—':((h.gap>=0?'+':'')+(h.gap*100).toFixed(2)+'%'), h.rank==null?'—':String(h.rank)];
+      }));
+      box.appendChild(t);
+      if(o.skipped && o.skipped.length){ box.appendChild(el('p','facts','跳过：'+o.skipped.map(function(s){return s.name+'（'+s.why+'）';}).join('、'))); }
+      // 顶部持仓表切换为复核后的持仓
+      var wrap=document.getElementById('today-wrap'), note=document.getElementById('today-note');
+      if(wrap){
+        wrap.textContent='';
+        var rows=o.hold.map(function(h){
+          var badge=el('span','badge '+(h.changed?'new':'keep'), h.changed?'开盘补位':'复核后持有');
+          var nm=el('span','nm',h.name); var cell=el('td'); cell.appendChild(nm); cell.appendChild(document.createTextNode(' ')); cell.appendChild(badge);
+          var r=el('tr');
+          var c1=el('td'); c1.appendChild(el('code',null,h.code)); r.appendChild(c1); r.appendChild(cell);
+          r.appendChild(el('td','r',Math.round(h.weight*100)+'%'));
+          r.appendChild(el('td','r hidesm',h.rank==null?'—':String(h.rank)));
+          r.appendChild(el('td','r hidesm',h.gap==null?'—':((h.gap*100).toFixed(2)+'%')));
+          return r;
+        });
+        var t2=el('table'); t2.style.marginTop='14px';
+        var th=el('thead'), tr=el('tr');
+        [['代码',0],['名称',0],['目标权重',1],['模型排名',1],['竞价涨跌',1]].forEach(function(c){ tr.appendChild(el('th',c[1]?'r hidesm':'',c[0])); });
+        th.appendChild(tr); t2.appendChild(th); var tb=el('tbody'); rows.forEach(function(r){ tb.appendChild(r); }); t2.appendChild(tb);
+        wrap.appendChild(t2);
+        if(note){ note.style.display=''; note.textContent='已按 '+o.reviewed_at.slice(11,16)+' 开盘复核更新持仓：'+o.note+'。上方汇总（卖出、候选池）仍为收盘信号口径。'; }
+      }
+    } else {
+      box.appendChild(el('p','muted','今日（'+sig+' 收盘信号的下一个交易日）开盘复核尚未运行，最近一次是 '+o.trade_date+'。'));
     }
   }).catch(function(){ box.textContent=''; box.appendChild(el('p','muted','还没有开盘复核记录。')); });
 })();

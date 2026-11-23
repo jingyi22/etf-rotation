@@ -94,6 +94,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--no-push", action="store_true")
+    ap.add_argument("--no-notify", action="store_true", help="不发桌面通知（CI 兜底用）")
     a = ap.parse_args()
     now = datetime.now(CST)
     lo, hi = OPEN_REVIEW["window"]
@@ -139,7 +140,7 @@ def main():
                   "rank": rank[c]["rank"] if c in rank else None,
                   "changed": c not in hold_close} for c in weights],
         "dropped": [{"code": c, "name": names.get(c, c)} for c in hold_close if c not in weights],
-        "skipped": skipped,
+        "skipped": skipped, "_no_notify": a.no_notify,
     }
     print(f"{trade_date} 开盘复核（{q['510300']['time']}）：{note}")
     for h in rec["hold"]:
@@ -148,6 +149,7 @@ def main():
         print(f"   跳过 {s['code']} {s['name']}：{s['why']}")
     if a.no_push:
         print("（--no-push：未写台账）")
+        summarize_out(rec, today, q)
         return 0
     os.makedirs(TRACK_DIR, exist_ok=True)
     with open(LEDGER, "a", encoding="utf-8", newline="\n") as fh:
@@ -161,7 +163,57 @@ def main():
         git("pull", "--rebase", "--autostash", "-q")
         r = git("push", "-q")
     print("推送", "成功" if r.returncode == 0 else f"失败：{r.stderr.strip()}")
+    summarize_out(rec, today, q)
     return 0
+
+
+def notify(title, msg):
+    """Windows 托盘通知（本机计划任务用，不依赖第三方模块）。非 Windows 时只打印。"""
+    if sys.platform != "win32":
+        print(f"[notify] {title}：{msg}")
+        return
+    import base64
+    ps = (
+        "Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing;"
+        "$n=New-Object System.Windows.Forms.NotifyIcon;"
+        "$n.Icon=[System.Drawing.SystemIcons]::Information; $n.Visible=$true;"
+        f"$n.ShowBalloonTip(20000,'{title}','{msg}',[System.Windows.Forms.ToolTipIcon]::Info);"
+        "Start-Sleep -Seconds 6; $n.Dispose()"
+    )
+    enc = base64.b64encode(ps.encode("utf-16-le")).decode()
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-EncodedCommand", enc], timeout=40,
+                       capture_output=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[notify] 失败：{e}")
+
+
+def summarize_out(rec, today, q):
+    """复核完成后：有调整 → 桌面通知；无调整 → 只在日志和 CI 摘要里留一行。
+    每项：'名称 13%：低开 0.8%'；被替换掉的与跳过的也写清楚。"""
+    if rec["note"] == "防守模式：开盘不调整":
+        return
+    changed = [h for h in rec["hold"] if h["changed"]]
+    lines = [f"{h['name']} {h['weight'] * 100:.0f}% 竞价 {(h['gap'] or 0) * 100:+.2f}%" for h in rec["hold"]]
+    if rec["note"] == "无需调整" or not changed:
+        print("[通知] 无调整，不推送提醒")
+    else:
+        msg = "已调整：" + "、".join(h["name"] for h in changed) + " 换入"
+        if rec["dropped"]:
+            msg += "；" + "、".join(x["name"] for x in rec["dropped"]) + " 未买"
+        if rec["skipped"]:
+            msg += "（" + "、".join(f"{s['name']}{s['why']}" for s in rec["skipped"]) + "）"
+        print("[通知] " + msg)
+        if not rec.get("_no_notify"):
+            notify(f"ETF 开盘复核 {rec['trade_date']} 已调整", msg)
+    # GitHub Actions 摘要（本机运行时无效，不影响）
+    step = os.environ.get("GITHUB_STEP_SUMMARY")
+    if step:
+        with open(step, "a", encoding="utf-8") as fh:
+            fh.write(f"### 开盘复核 {rec['trade_date']} {rec['quote_time']}：{rec['note']}\n\n")
+            fh.write("| 代码 | 名称 | 权重 | 竞价涨跌 |\n|---|---|---|---|\n")
+            for h in rec["hold"]:
+                fh.write(f"| {h['code']} | {h['name']} | {h['weight'] * 100:.0f}% | {(h['gap'] or 0) * 100:+.2f}% |\n")
 
 
 if __name__ == "__main__":

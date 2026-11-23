@@ -31,7 +31,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           for i in 1 2 3 4 5; do
-            python scripts/open_review.py && break
+            python scripts/open_review.py --no-notify && break
             code=$?; [ "$code" -ne 2 ] && exit $code
             echo "行情获取失败，60 秒后重试"; sleep 60
           done
