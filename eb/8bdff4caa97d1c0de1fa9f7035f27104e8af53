@@ -1,0 +1,23 @@
+docs/signals.json
+  s_b2b219da2f9426::t_23ed36c6130877 3
+scripts/score.py
+  s_b2b219da2f9426::t_23ed36c6130877 41-42,46-47,51
+docs/index.html
+  s_b2b219da2f9426::t_23ed36c6130877 145,216,218,438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "eb8bdff4caa97d1c0de1fa9f7035f27104e8af53",
+  "prompts": {},
+  "sessions": {
+    "s_b2b219da2f9426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b5a53fc-0c61-41ca-81b1-645cd463c7df",
+        "model": "deepseek-v4-1-flash-261017"
+      },
+      "human_author": "jingyi22 <jingyi22@users.noreply.github.com>"
+    }
+  }
+}
