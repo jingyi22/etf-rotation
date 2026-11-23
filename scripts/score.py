@@ -38,17 +38,17 @@ def main():
     bnav = b / b[0]
     # 每 5 个交易日抽样，控制文件体积
     step = 2
-    curve = [{"date": res["dates"][i], "nav": round(float(nav[i]), 4),
-              "bench": round(float(bnav[i]), 4) if np.isfinite(bnav[i]) else None}
+    curve = [{"date": res["dates"][i], "nav": round(float(nav[i]), 6),
+              "bench": round(float(bnav[i]), 6) if np.isfinite(bnav[i]) else None}
              for i in range(0, len(nav), step)]
     if curve[-1]["date"] != res["dates"][-1]:
         i = len(nav) - 1
-        curve.append({"date": res["dates"][i], "nav": round(float(nav[i]), 4),
-                      "bench": round(float(bnav[i]), 4) if np.isfinite(bnav[i]) else None})
+        curve.append({"date": res["dates"][i], "nav": round(float(nav[i]), 6),
+                      "bench": round(float(bnav[i]), 6) if np.isfinite(bnav[i]) else None})
     # 回撤曲线
     peak = np.maximum.accumulate(nav)
     dd = nav / peak - 1
-    dcurve = [{"date": res["dates"][i], "dd": round(float(dd[i]), 4)}
+    dcurve = [{"date": res["dates"][i], "dd": round(float(dd[i]), 5)}
               for i in range(0, len(nav), step)]
     # 分段候选池数量（每半年一个点）
     candidates_per_chunk = []
