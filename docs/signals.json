@@ -1,0 +1,326 @@
+{
+ "asof": "2026-11-20",
+ "generated_at": "2026-11-23T10:47:15",
+ "regime": {
+  "risk_on": false,
+  "hs300": 3954.56,
+  "ma250": 4605.41,
+  "pct_from_ma": -0.1413
+ },
+ "holdings": [
+  {
+   "code": "511010",
+   "name": "国债ETF国泰",
+   "weight": 0.6,
+   "close": 141.41099548339844,
+   "score": 1.343,
+   "rank": null,
+   "is_new": false,
+   "dist252": 0.0041,
+   "vol20": 0.0006,
+   "amt_yi": null
+  },
+  {
+   "code": "515300",
+   "name": "300红利低波ETF嘉实",
+   "weight": 0.133,
+   "close": 1.4329999685287476,
+   "score": 1.426,
+   "rank": 2,
+   "is_new": false,
+   "dist252": 0.0914,
+   "vol20": 0.0088,
+   "amt_yi": 2.1
+  },
+  {
+   "code": "515450",
+   "name": "红利低波50ETF南方",
+   "weight": 0.133,
+   "close": 1.5149999856948853,
+   "score": 1.24,
+   "rank": 4,
+   "is_new": false,
+   "dist252": 0.0656,
+   "vol20": 0.0099,
+   "amt_yi": 2.8
+  },
+  {
+   "code": "515100",
+   "name": "红利低波100ETF景顺",
+   "weight": 0.133,
+   "close": 1.4850000143051147,
+   "score": 1.182,
+   "rank": 5,
+   "is_new": false,
+   "dist252": 0.0267,
+   "vol20": 0.0067,
+   "amt_yi": 1.19
+  }
+ ],
+ "top": [
+  {
+   "code": "159887",
+   "name": "银行ETF富国",
+   "score": 1.655,
+   "dist252": 0.1469,
+   "vol20": 0.01,
+   "amt_yi": 1.18,
+   "held": false
+  },
+  {
+   "code": "515300",
+   "name": "300红利低波ETF嘉实",
+   "score": 1.426,
+   "dist252": 0.0914,
+   "vol20": 0.0088,
+   "amt_yi": 2.1,
+   "held": true
+  },
+  {
+   "code": "510230",
+   "name": "金融ETF国泰",
+   "score": 1.313,
+   "dist252": 0.0564,
+   "vol20": 0.0072,
+   "amt_yi": 1.14,
+   "held": false
+  },
+  {
+   "code": "515450",
+   "name": "红利低波50ETF南方",
+   "score": 1.24,
+   "dist252": 0.0656,
+   "vol20": 0.0099,
+   "amt_yi": 2.8,
+   "held": true
+  },
+  {
+   "code": "515100",
+   "name": "红利低波100ETF景顺",
+   "score": 1.182,
+   "dist252": 0.0267,
+   "vol20": 0.0067,
+   "amt_yi": 1.19,
+   "held": true
+  },
+  {
+   "code": "159981",
+   "name": "能源化工ETF建信",
+   "score": 1.058,
+   "dist252": 0.1316,
+   "vol20": 0.0216,
+   "amt_yi": 9.77,
+   "held": false
+  },
+  {
+   "code": "159611",
+   "name": "电力ETF广发",
+   "score": 0.942,
+   "dist252": -0.0236,
+   "vol20": 0.0063,
+   "amt_yi": 3.01,
+   "held": false
+  },
+  {
+   "code": "510050",
+   "name": "上证50ETF华夏",
+   "score": 0.909,
+   "dist252": -0.0435,
+   "vol20": 0.0048,
+   "amt_yi": 37.49,
+   "held": false
+  },
+  {
+   "code": "515220",
+   "name": "煤炭ETF国泰",
+   "score": 0.536,
+   "dist252": -0.0348,
+   "vol20": 0.0141,
+   "amt_yi": 5.57,
+   "held": false
+  },
+  {
+   "code": "510210",
+   "name": "上证指数ETF富国",
+   "score": 0.504,
+   "dist252": -0.0854,
+   "vol20": 0.009,
+   "amt_yi": 9.19,
+   "held": false
+  },
+  {
+   "code": "159865",
+   "name": "养殖ETF国泰",
+   "score": 0.428,
+   "dist252": -0.0799,
+   "vol20": 0.0113,
+   "amt_yi": 1.46,
+   "held": false
+  },
+  {
+   "code": "159841",
+   "name": "证券ETF天弘",
+   "score": 0.16,
+   "dist252": -0.1126,
+   "vol20": 0.0135,
+   "amt_yi": 2.19,
+   "held": false
+  },
+  {
+   "code": "159883",
+   "name": "医疗器械ETF永赢",
+   "score": 0.051,
+   "dist252": -0.1166,
+   "vol20": 0.0155,
+   "amt_yi": 1.26,
+   "held": false
+  },
+  {
+   "code": "159870",
+   "name": "化工ETF鹏华",
+   "score": -0.486,
+   "dist252": -0.2295,
+   "vol20": 0.0145,
+   "amt_yi": 2.43,
+   "held": false
+  },
+  {
+   "code": "512710",
+   "name": "军工龙头ETF富国",
+   "score": -0.853,
+   "dist252": -0.2531,
+   "vol20": 0.0199,
+   "amt_yi": 3.66,
+   "held": false
+  }
+ ],
+ "universe_size": 25,
+ "recent": [],
+ "universe": [
+  {
+   "code": "159516",
+   "name": "半导体设备ETF国泰",
+   "amt_yi": 30.14
+  },
+  {
+   "code": "510050",
+   "name": "上证50ETF华夏",
+   "amt_yi": 37.49
+  },
+  {
+   "code": "159530",
+   "name": "机器人ETF易方达",
+   "amt_yi": 17.29
+  },
+  {
+   "code": "159981",
+   "name": "能源化工ETF建信",
+   "amt_yi": 9.77
+  },
+  {
+   "code": "510210",
+   "name": "上证指数ETF富国",
+   "amt_yi": 9.19
+  },
+  {
+   "code": "515220",
+   "name": "煤炭ETF国泰",
+   "amt_yi": 5.57
+  },
+  {
+   "code": "159869",
+   "name": "游戏ETF华夏",
+   "amt_yi": 5.77
+  },
+  {
+   "code": "159852",
+   "name": "软件ETF嘉实",
+   "amt_yi": 4.35
+  },
+  {
+   "code": "512710",
+   "name": "军工龙头ETF富国",
+   "amt_yi": 3.66
+  },
+  {
+   "code": "159611",
+   "name": "电力ETF广发",
+   "amt_yi": 3.01
+  },
+  {
+   "code": "159851",
+   "name": "金融科技ETF华宝",
+   "amt_yi": 3.16
+  },
+  {
+   "code": "515450",
+   "name": "红利低波50ETF南方",
+   "amt_yi": 2.8
+  },
+  {
+   "code": "159755",
+   "name": "电池ETF广发",
+   "amt_yi": 2.78
+  },
+  {
+   "code": "159870",
+   "name": "化工ETF鹏华",
+   "amt_yi": 2.43
+  },
+  {
+   "code": "159566",
+   "name": "储能电池ETF易方达",
+   "amt_yi": 2.41
+  },
+  {
+   "code": "159732",
+   "name": "消费电子ETF华夏",
+   "amt_yi": 2.08
+  },
+  {
+   "code": "159841",
+   "name": "证券ETF天弘",
+   "amt_yi": 2.19
+  },
+  {
+   "code": "588030",
+   "name": "科创100ETF博时",
+   "amt_yi": 2.04
+  },
+  {
+   "code": "515300",
+   "name": "300红利低波ETF嘉实",
+   "amt_yi": 2.1
+  },
+  {
+   "code": "159865",
+   "name": "养殖ETF国泰",
+   "amt_yi": 1.46
+  },
+  {
+   "code": "159883",
+   "name": "医疗器械ETF永赢",
+   "amt_yi": 1.26
+  },
+  {
+   "code": "159667",
+   "name": "工业母机ETF国泰",
+   "amt_yi": 1.25
+  },
+  {
+   "code": "510230",
+   "name": "金融ETF国泰",
+   "amt_yi": 1.14
+  },
+  {
+   "code": "515100",
+   "name": "红利低波100ETF景顺",
+   "amt_yi": 1.19
+  },
+  {
+   "code": "159887",
+   "name": "银行ETF富国",
+   "amt_yi": 1.18
+  }
+ ]
+}
