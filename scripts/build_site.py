@@ -288,6 +288,11 @@ def svg_line(chart_id, rows, series, y_fmt, h=300, y0pad=0.06, baseline=None):
     return "".join(parts)
 
 
+def yuan(v):
+    """金额（元）→ "1 亿元" / "1000 万元"。"""
+    return f"{v / 1e8:g} 亿元" if v >= 1e8 else f"{v / 1e4:g} 万元"
+
+
 def num(v, fmt, dash="—"):
     return dash if v is None else fmt(v)
 
@@ -339,7 +344,7 @@ def section_today(daily, bt):
     <div class="regime">
       <div class="state {state_cls}"><span class="dot" style="background:{'var(--good)' if risk_on else 'var(--warning)'}"></span>{state_txt}</div>
       <div>
-        <p>候选池 {rec['pool']} 只（近 20 日日均成交额 ≥ {bt['params']['min_amount'] / 1e4:.0f} 万元、上市满 {bt['params']['min_history']} 个交易日、同一指数只留成交额最大的一只）。{logged}</p>
+        <p>候选池 {rec['pool']} 只（近 20 日日均成交额 ≥ {yuan(bt['params']['min_amount'])}、上市满 {bt['params']['min_history']} 个交易日、同一指数只留成交额最大的一只）。{logged}</p>
         <p class="facts">卖出：{sells}</p>
       </div>
     </div>
@@ -622,7 +627,7 @@ def defense_note(bt):
     for per in bt["periods"][1:]:
         out.append(f"{per['label']}：有防守 年化 {per['cagr'] * 100:+.1f}% / 回撤 {per['mdd'] * 100:.1f}%，"
                    f"不防守 {per['no_defense_cagr'] * 100:+.1f}% / {per['no_defense_mdd'] * 100:.1f}%")
-    return "；".join(out) + "。熊市（2022–2023）里防守把回撤压低了一半，牛市里几乎没有代价。"
+    return "；".join(out) + "。"
 
 
 def section_method(bt):
@@ -634,7 +639,7 @@ def section_method(bt):
         <h2>方法</h2>
         <ul class="notes">
           <li><b>数据</b>：新浪财经 ETF 日线（份额折算处按价格跳变修补）与沪深300 日线，每个交易日收盘后自动更新。</li>
-          <li><b>候选池</b>：只做 A 股股票型 ETF（剔除货币、债券、商品、跨境）；近 20 日日均成交额 ≥ {p['min_amount'] / 1e4:.0f} 万元；上市满 {p['min_history']} 个交易日；同一指数（名称中"ETF"之前相同）每天只留成交额最大的一只。全部按当天能看到的数据判断，不用未来信息。</li>
+          <li><b>候选池</b>：只做 A 股股票型 ETF（剔除货币、债券、商品、跨境）；近 20 日日均成交额 ≥ {yuan(p['min_amount'])}；上市满 {p['min_history']} 个交易日；同一指数（名称中"ETF"之前相同）每天只留成交额最大的一只。全部按当天能看到的数据判断，不用未来信息。</li>
           <li><b>因子</b>：14 个价量特征（各周期涨跌、距均线、距高点、波动、成交额）。每天在候选池内转成百分位，模型只比较"同一天谁更好"，不预测大盘涨跌。</li>
           <li><b>模型选择</b>：{p['dev_start'][:4]}–{int(p['holdout_start'][:4]) - 1} 为开发期，比较单因子 IC 与 8 个组合方案后选定当前模型；{p['holdout_start'][:4]} 起为留出期，只用来检验，选模型时没有看过。（1 亿门槛下 2019 年以前每天只有 3–9 只候选，无法检验排序，所以开发期从 2020 年开始。）</li>
           <li><b>开盘复核</b>：每个交易日 09:26 集合竞价后，对需要新买入的 ETF 检查开盘价，高开超过 2% 的不追、由下一名补位；继续持有与卖出不变。与收盘版分别记账、到期对比。</li>
