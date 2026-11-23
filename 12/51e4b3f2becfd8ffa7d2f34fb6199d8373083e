@@ -1,0 +1,33 @@
+_shot.py
+  s_b2b219da2f9426::t_34520948a3eb46 1-30
+_shot3.py
+  s_b2b219da2f9426::t_beef9a4bc329a3 1-17
+docs/signals.json
+  s_b2b219da2f9426::t_1681801084a5b4 202-463
+  s_b2b219da2f9426::t_1c64a1c2fed2f4 3
+_shot2.py
+  s_b2b219da2f9426::t_55bb8adac3a816 1-18
+docs/index.html
+  s_b2b219da2f9426::t_fe03d75c31e9f5 78,106,108,111,134-135,147,171-172,177,185,193,201,218,405-407,431,499-500
+scripts/build_site.py
+  s_b2b219da2f9426::t_fe03d75c31e9f5 95,123,125,128,151-152,211-212,317,342-349,465-466,480,527-529,553
+scripts/score.py
+  s_b2b219da2f9426::t_1c64a1c2fed2f4 196
+  s_b2b219da2f9426::t_164ac74744053c 186,188-194,197-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "1251e4b3f2becfd8ffa7d2f34fb6199d8373083e",
+  "prompts": {},
+  "sessions": {
+    "s_b2b219da2f9426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b5a53fc-0c61-41ca-81b1-645cd463c7df",
+        "model": "deepseek-v4-1-flash-261017"
+      },
+      "human_author": "jingyi22 <jingyi22@users.noreply.github.com>"
+    }
+  }
+}
