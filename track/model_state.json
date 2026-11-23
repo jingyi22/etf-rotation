@@ -1,0 +1,19 @@
+{
+ "champion": {
+  "name": "趋势+低波",
+  "weights": {
+   "dist250": 0.6,
+   "vol20": -0.4
+  },
+  "smooth": 5
+ },
+ "since": "2026-11-20",
+ "history": [
+  {
+   "date": null,
+   "event": "init",
+   "to": "趋势+低波",
+   "reason": "启用「趋势+低波」：开发期 2016–2021 的 8 个候选里组合回测夏普最高（选择过程见 config.py 注释）"
+  }
+ ]
+}

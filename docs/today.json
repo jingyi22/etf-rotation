@@ -1,0 +1,827 @@
+{
+ "signal_date": "2026-11-20",
+ "exec": "下一交易日开盘",
+ "model": "趋势+低波",
+ "mode": "defense",
+ "hold": [
+  {
+   "code": "511010",
+   "name": "国债ETF国泰",
+   "weight": 0.6,
+   "rank": null,
+   "score": null,
+   "action": "hold",
+   "close": 141.411
+  },
+  {
+   "code": "515300",
+   "name": "300红利低波ETF嘉实",
+   "weight": 0.1333,
+   "rank": 3,
+   "score": 0.4466,
+   "action": "hold",
+   "close": 1.433
+  },
+  {
+   "code": "515450",
+   "name": "红利低波50ETF南方",
+   "weight": 0.1333,
+   "rank": 8,
+   "score": 0.4191,
+   "action": "hold",
+   "close": 1.515
+  },
+  {
+   "code": "515100",
+   "name": "红利低波100ETF景顺",
+   "weight": 0.1333,
+   "rank": 6,
+   "score": 0.4277,
+   "action": "hold",
+   "close": 1.485
+  }
+ ],
+ "sells": [],
+ "ranking": [
+  {
+   "rank": 1,
+   "code": "512890",
+   "name": "红利低波ETF华泰柏瑞",
+   "score": 0.4488,
+   "close": 1.271,
+   "amt_yi": 9.53,
+   "r5": 0.0209,
+   "r20": 0.0583,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0758,
+     "pct": 0.974,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0073,
+     "pct": 0.066,
+     "w": -0.4
+    }
+   },
+   "pick": true,
+   "held": false
+  },
+  {
+   "rank": 2,
+   "code": "517900",
+   "name": "银行AH优选ETF招商",
+   "score": 0.4479,
+   "close": 1.676,
+   "amt_yi": 0.34,
+   "r5": 0.0084,
+   "r20": 0.0709,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.1117,
+     "pct": 0.987,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.009,
+     "pct": 0.118,
+     "w": -0.4
+    }
+   },
+   "pick": true,
+   "held": false
+  },
+  {
+   "rank": 3,
+   "code": "515300",
+   "name": "300红利低波ETF嘉实",
+   "score": 0.4466,
+   "close": 1.433,
+   "amt_yi": 2.1,
+   "r5": 0.0332,
+   "r20": 0.0726,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0914,
+     "pct": 0.98,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.009,
+     "pct": 0.105,
+     "w": -0.4
+    }
+   },
+   "pick": true,
+   "held": false
+  },
+  {
+   "rank": 4,
+   "code": "510230",
+   "name": "金融ETF国泰",
+   "score": 0.4393,
+   "close": 1.404,
+   "amt_yi": 1.14,
+   "r5": 0.0293,
+   "r20": 0.0636,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0564,
+     "pct": 0.961,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0074,
+     "pct": 0.072,
+     "w": -0.4
+    }
+   },
+   "pick": true,
+   "held": false
+  },
+  {
+   "rank": 5,
+   "code": "512800",
+   "name": "银行ETF华宝",
+   "score": 0.4323,
+   "close": 0.926,
+   "amt_yi": 14.01,
+   "r5": 0.0323,
+   "r20": 0.0907,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.1408,
+     "pct": 1.0,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0095,
+     "pct": 0.151,
+     "w": -0.4
+    }
+   },
+   "pick": true,
+   "held": false
+  },
+  {
+   "rank": 6,
+   "code": "515100",
+   "name": "红利低波100ETF景顺",
+   "score": 0.4277,
+   "close": 1.485,
+   "amt_yi": 1.19,
+   "r5": 0.0178,
+   "r20": 0.0524,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0267,
+     "pct": 0.921,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0069,
+     "pct": 0.053,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 7,
+   "code": "561580",
+   "name": "央企红利ETF华泰柏瑞",
+   "score": 0.4206,
+   "close": 1.305,
+   "amt_yi": 0.95,
+   "r5": 0.0195,
+   "r20": 0.049,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0468,
+     "pct": 0.934,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0077,
+     "pct": 0.086,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 8,
+   "code": "515450",
+   "name": "红利低波50ETF南方",
+   "score": 0.4191,
+   "close": 1.515,
+   "amt_yi": 2.8,
+   "r5": 0.037,
+   "r20": 0.0624,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0656,
+     "pct": 0.967,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0102,
+     "pct": 0.191,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 9,
+   "code": "512040",
+   "name": "价值ETF富国",
+   "score": 0.4133,
+   "close": 1.183,
+   "amt_yi": 2.4,
+   "r5": -0.005,
+   "r20": 0.0198,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0157,
+     "pct": 0.888,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0067,
+     "pct": 0.039,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 10,
+   "code": "510880",
+   "name": "红利ETF华泰柏瑞",
+   "score": 0.4067,
+   "close": 3.429,
+   "amt_yi": 6.27,
+   "r5": 0.0163,
+   "r20": 0.036,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.051,
+     "pct": 0.947,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0094,
+     "pct": 0.145,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 11,
+   "code": "515080",
+   "name": "中证红利ETF招商",
+   "score": 0.3987,
+   "close": 1.559,
+   "amt_yi": 3.35,
+   "r5": 0.0013,
+   "r20": 0.023,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0101,
+     "pct": 0.901,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0066,
+     "pct": 0.033,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 12,
+   "code": "562550",
+   "name": "绿电ETF华夏",
+   "score": 0.3895,
+   "close": 1.151,
+   "amt_yi": 0.75,
+   "r5": 0.0159,
+   "r20": 0.0277,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.012,
+     "pct": 0.895,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0067,
+     "pct": 0.046,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 13,
+   "code": "159611",
+   "name": "电力ETF广发",
+   "score": 0.3768,
+   "close": 1.046,
+   "amt_yi": 3.01,
+   "r5": 0.0145,
+   "r20": 0.0255,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0236,
+     "pct": 0.875,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0065,
+     "pct": 0.026,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 14,
+   "code": "159625",
+   "name": "绿色电力ETF嘉实",
+   "score": 0.372,
+   "close": 1.204,
+   "amt_yi": 0.35,
+   "r5": 0.0118,
+   "r20": 0.0169,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0339,
+     "pct": 0.855,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.006,
+     "pct": 0.013,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 15,
+   "code": "515650",
+   "name": "消费50ETF富国",
+   "score": 0.3714,
+   "close": 1.162,
+   "amt_yi": 1.57,
+   "r5": 0.0211,
+   "r20": 0.0983,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0501,
+     "pct": 0.941,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0114,
+     "pct": 0.243,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 16,
+   "code": "510050",
+   "name": "上证50ETF华夏",
+   "score": 0.368,
+   "close": 2.9,
+   "amt_yi": 37.49,
+   "r5": 0.0038,
+   "r20": 0.0108,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0435,
+     "pct": 0.829,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0049,
+     "pct": 0.007,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 17,
+   "code": "517180",
+   "name": "中国国企ETF南方",
+   "score": 0.3639,
+   "close": 1.6,
+   "amt_yi": 0.24,
+   "r5": 0.0276,
+   "r20": 0.0376,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0531,
+     "pct": 0.954,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.012,
+     "pct": 0.283,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 18,
+   "code": "159980",
+   "name": "有色ETF大成",
+   "score": 0.3606,
+   "close": 1.885,
+   "amt_yi": 5.14,
+   "r5": -0.071,
+   "r20": -0.1054,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0901,
+     "pct": 0.75,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0103,
+     "pct": 0.197,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 19,
+   "code": "159666",
+   "name": "交通运输ETF华夏",
+   "score": 0.3568,
+   "close": 0.979,
+   "amt_yi": 0.22,
+   "r5": 0.0062,
+   "r20": 0.0294,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0197,
+     "pct": 0.882,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.009,
+     "pct": 0.112,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 20,
+   "code": "516910",
+   "name": "物流ETF富国",
+   "score": 0.3152,
+   "close": 1.13,
+   "amt_yi": 0.18,
+   "r5": 0.0009,
+   "r20": 0.0053,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0252,
+     "pct": 0.862,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0101,
+     "pct": 0.178,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 21,
+   "code": "510210",
+   "name": "上证指数ETF富国",
+   "score": 0.3132,
+   "close": 0.916,
+   "amt_yi": 9.19,
+   "r5": -0.0307,
+   "r20": -0.0378,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0854,
+     "pct": 0.763,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0092,
+     "pct": 0.132,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 22,
+   "code": "512010",
+   "name": "医药ETF易方达",
+   "score": 0.3055,
+   "close": 0.374,
+   "amt_yi": 3.82,
+   "r5": -0.0184,
+   "r20": -0.0053,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0003,
+     "pct": 0.908,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0131,
+     "pct": 0.303,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 23,
+   "code": "159930",
+   "name": "能源ETF汇添富",
+   "score": 0.2965,
+   "close": 1.701,
+   "amt_yi": 1.26,
+   "r5": 0.0131,
+   "r20": -0.0087,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0304,
+     "pct": 0.928,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0172,
+     "pct": 0.428,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 24,
+   "code": "516130",
+   "name": "消费龙头ETF华宝",
+   "score": 0.2954,
+   "close": 0.732,
+   "amt_yi": 0.12,
+   "r5": 0.0181,
+   "r20": 0.0877,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": 0.0175,
+     "pct": 0.914,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0094,
+     "pct": 0.138,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 25,
+   "code": "510180",
+   "name": "上证180ETF华安",
+   "score": 0.2931,
+   "close": 3.623,
+   "amt_yi": 0.74,
+   "r5": -0.0055,
+   "r20": -0.0109,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0954,
+     "pct": 0.724,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0063,
+     "pct": 0.02,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 26,
+   "code": "560080",
+   "name": "中药ETF汇添富",
+   "score": 0.2924,
+   "close": 0.944,
+   "amt_yi": 0.48,
+   "r5": -0.0136,
+   "r20": -0.0074,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0551,
+     "pct": 0.816,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0109,
+     "pct": 0.224,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 27,
+   "code": "516820",
+   "name": "医疗创新ETF平安",
+   "score": 0.29,
+   "close": 0.337,
+   "amt_yi": 0.34,
+   "r5": -0.0288,
+   "r20": -0.0088,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0389,
+     "pct": 0.836,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0126,
+     "pct": 0.296,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 28,
+   "code": "561300",
+   "name": "沪深300增强ETF国泰",
+   "score": 0.2789,
+   "close": 0.935,
+   "amt_yi": 0.54,
+   "r5": -0.024,
+   "r20": -0.0291,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0823,
+     "pct": 0.77,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0106,
+     "pct": 0.217,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 29,
+   "code": "159928",
+   "name": "消费ETF汇添富",
+   "score": 0.2752,
+   "close": 0.704,
+   "amt_yi": 4.85,
+   "r5": 0.0028,
+   "r20": 0.0618,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0239,
+     "pct": 0.868,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0134,
+     "pct": 0.309,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  },
+  {
+   "rank": 30,
+   "code": "159595",
+   "name": "中证A50ETF大成",
+   "score": 0.2662,
+   "close": 1.221,
+   "amt_yi": 0.89,
+   "r5": -0.0008,
+   "r20": -0.0113,
+   "factors": {
+    "dist250": {
+     "label": "距250日均线",
+     "value": -0.0908,
+     "pct": 0.743,
+     "w": 0.6
+    },
+    "vol20": {
+     "label": "20日波动",
+     "value": 0.0075,
+     "pct": 0.079,
+     "w": -0.4
+    }
+   },
+   "pick": false,
+   "held": false
+  }
+ ]
+}

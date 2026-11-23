@@ -9,7 +9,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 HISTORY_START = "2014-01-01"     # 统一保留起点：所有 ETF 从同一天起进面板，避免"数据越早越有优势"的隐形前视偏差
 
@@ -25,8 +25,10 @@ LAST_CLOSE = None
 
 
 def last_trade_date():
-    """最近一个已收盘交易日（本地时间）：>=15:30 取今天，否则取昨天；周末回退到周五。"""
-    now = datetime.now()
+    """最近一个已收盘交易日（北京时间）：>=15:30 取今天，否则取昨天；周末回退到周五。
+    CI 运行在 UTC，这里显式按北京时间算，避免日期错一天。节假日由数据本身兜底：
+    若没有新日线，所有缓存保持不变，track.py 发现信号日已记录就不会重复写台账。"""
+    now = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
     d = now.date()
     if now.weekday() >= 5:
         d -= timedelta(days=now.weekday() - 4)

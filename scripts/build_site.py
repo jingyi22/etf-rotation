@@ -1,25 +1,15 @@
-"""把 data/signals.json + data/backtest.json 渲染成 docs/index.html（单页、无外部依赖）。"""
+"""把 data/daily.json（每日推荐 + 实盘台账 + 模型验证）与 data/backtest.json（回测）
+渲染成 docs/index.html（单页、无外部依赖）。"""
 import html
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(__file__))
 from config import DATA_DIR, DOCS_DIR
 
 E = html.escape
-
-
-def pct(x, d=1, sign=False):
-    if x is None:
-        return "—"
-    s = f"{x * 100:+.{d}f}%" if sign else f"{x * 100:.{d}f}%"
-    return s
-
-
-def fmt_date(s):
-    return s
 
 
 CSS = r"""
@@ -72,6 +62,9 @@ h3{font-size:15px;margin:0 0 8px}
 .updated{color:var(--text-muted);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:6px}
 .theme-btn{background:var(--surface-1);border:1px solid var(--line);color:var(--text-secondary);
   border-radius:8px;padding:5px 10px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;margin:14px 0 0;font-size:13px}
+.toc a{color:var(--text-secondary);text-decoration:none;border-bottom:1px solid var(--line-strong)}
+.toc a:hover{color:var(--series-1);border-color:var(--series-1)}
 .banner{display:flex;gap:12px;align-items:flex-start;background:var(--amber-bg);color:var(--amber-ink);
   border:1px solid var(--amber-line);border-radius:var(--radius);padding:12px 16px;margin:18px 0 22px;font-size:13.5px}
 .banner b{color:inherit}
@@ -295,270 +288,339 @@ def svg_line(chart_id, rows, series, y_fmt, h=300, y0pad=0.06, baseline=None):
     return "".join(parts)
 
 
-def main():
-    sig = json.load(open(os.path.join(DATA_DIR, "signals.json"), encoding="utf-8"))
-    bt = json.load(open(os.path.join(DATA_DIR, "backtest.json"), encoding="utf-8"))
-    st, bench = bt["stats"], bt["bench"]
-    reg = sig["regime"]
-    risk_on = reg["risk_on"]
+def num(v, fmt, dash="—"):
+    return dash if v is None else fmt(v)
 
-    # ---- 当前持仓表 ----
-    def cells(v, fmt):
-        return fmt(v) if v is not None else "—"
 
-    rows_html = []
-    for h in sig["holdings"]:
-        badge = '<span class="badge def">防守</span>' if not risk_on else (
-            '<span class="badge new">新买</span>' if h["is_new"] else '<span class="badge keep">持有</span>')
-        rows_html.append(f"""<tr>
+def signed_pct(v, d=2):
+    return num(v, lambda x: f"{x * 100:+.{d}f}%")
+
+
+def plain_pct(v, d=1):
+    return num(v, lambda x: f"{x * 100:.{d}f}%")
+
+
+def tone(v):
+    """正负着色只用文字颜色（good/critical ink），并保留 +/- 号，颜色不单独承载含义。"""
+    if v is None:
+        return ""
+    return ' style="color:var(--good-ink)"' if v > 0 else (' style="color:var(--critical-ink)"' if v < 0 else "")
+
+
+def section_today(daily, bt):
+    rec = daily["recommendation"]
+    risk_on = rec["mode"] == "risk"
+    rows = []
+    for h in sorted(rec["hold"], key=lambda x: -x["weight"]):
+        badge = ('<span class="badge new">新买入</span>' if h["action"] == "buy"
+                 else '<span class="badge keep">继续持有</span>')
+        if not risk_on:
+            badge = '<span class="badge def">防守</span>' + (badge if h["action"] == "buy" else "")
+        rows.append(f"""<tr>
 <td><code>{E(h['code'])}</code></td>
-<td><span class="nm">{E(h['name'])}</span>{badge}</td>
-<td class="r">{h['weight']*100:.0f}%</td>
-<td class="r hidesm">{h['score'] if h['score'] is not None else '—'}</td>
-<td class="r hidesm">{h['rank'] if h['rank'] else '—'}</td>
-<td class="r">{cells(h['dist252'], lambda v: f"{v*100:+.1f}%")}</td>
-<td class="r hidesm">{cells(h['amt_yi'], lambda v: f"{v:.2f} 亿")}</td>
+<td><span class="nm">{E(h['name'])}</span> {badge}</td>
+<td class="r"><b>{h['weight'] * 100:.0f}%</b></td>
+<td class="r hidesm">{num(h['rank'], str)}</td>
+<td class="r hidesm">{num(h['close'], lambda x: f'{x:.3f}')}</td>
 </tr>""")
-    hold_table = "".join(rows_html)
+    sells = "".join(f'<span class="badge sell">卖出 {E(s["name"])}</span> ' for s in rec["sells"]) \
+        or '<span class="muted">无</span>'
+    state_cls, state_txt = ("risk", "进攻") if risk_on else ("defense", "防守")
+    gap = rec["hs300"] / rec["ma250"] - 1 if rec.get("ma250") else None
+    desc = (f"沪深300 在年线上方，按模型「{E(rec['model'])}」持有排名靠前的 {len(rec['hold'])} 只 ETF。"
+            if risk_on else "沪深300 在年线下方，模型排名照常计算，但仓位切换为防守组合：60% 国债 ETF + 40% 红利低波 ETF。")
+    logged = "（今日推荐已写入台账，之后不再修改）" if rec.get("logged") is not None else ""
+    return f"""
+  <section class="card" id="today">
+    <div class="card-head">
+      <div><h2>今日推荐 · 下一交易日开盘执行</h2><p class="sub">{desc}</p></div>
+      <div class="hint">信号日 {E(rec['signal_date'])} 收盘<br>沪深300 {rec['hs300']:.2f} · 年线 {num(rec.get('ma250'), lambda x: f'{x:.2f}')} · 偏离 {signed_pct(gap, 1)}</div>
+    </div>
+    <div class="regime">
+      <div class="state {state_cls}"><span class="dot" style="background:{'var(--good)' if risk_on else 'var(--warning)'}"></span>{state_txt}</div>
+      <div>
+        <p>候选池 {rec['pool']} 只（近 20 日日均成交额 ≥ {bt['params']['min_amount'] / 1e4:.0f} 万元、上市满 {bt['params']['min_history']} 个交易日、同一指数只留成交额最大的一只）。{logged}</p>
+        <p class="facts">卖出：{sells}</p>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table style="margin-top:14px">
+      <thead><tr><th>代码</th><th>名称</th><th class="r">目标权重</th><th class="r hidesm">模型排名</th><th class="r hidesm">信号日收盘</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table></div>
+  </section>"""
 
-    # ---- 打分榜 ----
-    top_rows = []
-    for k, t in enumerate(sig["top"], 1):
-        mark = '<span class="badge keep">持有</span>' if t["held"] else ""
-        top_rows.append(f"""<tr>
-<td class="r" style="width:36px">{k}</td>
-<td><code>{E(t['code'])}</code></td>
-<td><span class="nm">{E(t['name'])}</span>{mark}</td>
-<td class="r"><b>{t['score']:+.2f}</b></td>
-<td class="r">{cells(t['dist252'], lambda v: f"{v*100:+.1f}%")}</td>
-<td class="r">{cells(t['vol20'], lambda v: f"{v*100:.1f}%")}</td>
-<td class="r hidesm">{cells(t['amt_yi'], lambda v: f"{v:.2f} 亿")}</td>
+
+def section_ranking(daily):
+    rec = daily["recommendation"]
+    rk = rec["ranking"][:15]
+    keys = list(rk[0]["factors"]) if rk else []
+    head = "".join(f'<th class="r">{E(rk[0]["factors"][k]["label"])}</th>' for k in keys)
+    rows = []
+    for r in rk:
+        mark = ""
+        if r["pick"] and rec["mode"] == "risk":
+            mark = '<span class="badge new">入选</span>'
+        elif r["pick"]:
+            mark = '<span class="badge keep">进攻时入选</span>'
+        fac = ""
+        for k in keys:
+            fx = r["factors"][k]
+            v = fx["value"]
+            vtxt = num(v, lambda x: f"{x * 100:+.1f}%" if k.startswith(("r", "dist", "dd")) else f"{x * 100:.2f}%")
+            if fx["pct"] is None:
+                fac += f'<td class="r">{vtxt}</td>'
+            else:
+                better = fx["pct"] if fx["w"] > 0 else 1 - fx["pct"]   # 按模型偏好的方向
+                fac += (f'<td class="r">{vtxt}<div class="muted" style="font-size:11.5px">'
+                        f'优于 {better * 100:.0f}% 的候选</div></td>')
+        rows.append(f"""<tr>
+<td class="r" style="width:30px;padding-right:14px">{r['rank']}</td>
+<td><code>{E(r['code'])}</code></td>
+<td><span class="nm">{E(r['name'])}</span> {mark}</td>
+<td class="r"><b>{r['score']:+.3f}</b></td>
+{fac}
+<td class="r hidesm"{tone(r['r20'])}>{signed_pct(r['r20'], 1)}</td>
+<td class="r hidesm">{r['amt_yi']:.2f} 亿</td>
 </tr>""")
-    top_table = "".join(top_rows)
+    w = daily["state"]["champion"]["weights"]
+    wtxt = "、".join(f"{E(rk[0]['factors'][k]['label'])} {'+' if v > 0 else '−'}{abs(v):g}" for k, v in w.items()) if rk else ""
+    return f"""
+  <section class="card" id="rank">
+    <div class="card-head"><div><h2>模型评分榜（前 15）</h2>
+      <p class="sub">当前模型：{E(daily['state']['champion']['name'])}（{wtxt}，每项先在候选池内转为百分位再加权，分数做 {daily['state']['champion'].get('smooth', 0)} 日指数平滑）。"优于 x% 的候选"：按模型偏好的方向（距年线越高越好、波动越低越好），该 ETF 在当天候选池里的位置。</p></div></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th class="r" style="padding-right:14px">#</th><th>代码</th><th>名称</th><th class="r">评分</th>{head}<th class="r hidesm">20日涨跌</th><th class="r hidesm">日均成交额</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table></div>
+    <p class="sub" style="margin-top:10px">选样规则：从第 1 名往下取，跳过与已选 ETF 近 60 日收益相关系数 &gt; 0.9 的；已持有的 ETF 只要还在前 15 名就继续持有。</p>
+  </section>"""
 
-    # ---- 调仓记录 ----
-    rec_html = []
-    for r in sig["recent"]:
-        stt = '<span class="badge def">转防守</span>' if r["switch"] and r["state"] == "defense" else (
-            '<span class="badge buy">转进攻</span>' if r["switch"] else "")
-        buys = " ".join(f'<span class="badge buy">买 {E(h["name"])}</span>' for h in r["buy"]) or '<span class="muted">—</span>'
-        sells = " ".join(f'<span class="badge sell">卖 {E(h["name"])}</span>' for h in r["sell"]) or '<span class="muted">—</span>'
-        rec_html.append(f'<tr><td style="white-space:nowrap"><code>{r["signal_date"]}</code>'
-                        f'<div class="muted" style="font-size:12px">收盘信号</div></td>'
-                        f'<td>{stt}{buys}</td><td class="hidesm">{sells}</td></tr>')
-    rec_table = "".join(rec_html) or '<tr><td colspan="3" class="muted">近一年没有调仓</td></tr>'
 
-    # ---- 分年表 ----
-    yearly_rows = []
-    for y in sorted(bt["yearly"]):
-        a = bt["yearly"][y]
-        b = bt["bench_yearly"].get(y)
-        cls = "var(--good-ink)" if a >= 0 else "var(--critical-ink)"
-        bcell = f"{b*100:+.1f}%" if b is not None else "—"
-        yearly_rows.append(f'<tr><td>{y}</td><td class="r" style="color:{cls}">{a*100:+.1f}%</td>'
-                           f'<td class="r muted">{bcell}</td></tr>')
-    yearly_table = "".join(yearly_rows)
+def acc_table(by, title_note):
+    """准确度表：h=1/5/10 日。by[h] 含 top5 / pool / top5_up / top5_beat_med / days_top5_beat_pool / ic。"""
+    rows = []
+    for h in ("1", "5", "10"):
+        x = by.get(h) or {}
+        if not x or not x.get("n", x.get("days")):
+            rows.append(f'<tr><td>{h} 日</td><td colspan="6" class="muted">样本不足，等待兑现</td></tr>')
+            continue
+        n = x.get("n", x.get("days"))
+        ex = (x["top5"] - x["pool"]) if x.get("top5") is not None and x.get("pool") is not None else None
+        ic = f'{x["ic"]:+.3f}' if x.get("ic") is not None else "—"
+        rows.append(f"""<tr><td>{h} 日</td><td class="r">{n}</td>
+<td class="r"><b>{plain_pct(x.get('top5_up'))}</b></td>
+<td class="r"><b>{plain_pct(x.get('top5_beat_med'))}</b></td>
+<td class="r">{plain_pct(x.get('days_top5_beat_pool'))}</td>
+<td class="r"{tone(ex)}>{signed_pct(ex)}</td>
+<td class="r hidesm">{ic}</td></tr>""")
+    return f"""<div style="overflow-x:auto"><table>
+<thead><tr><th>持有期</th><th class="r">样本（天）</th><th class="r">前 5 名上涨比例</th><th class="r">前 5 名跑赢候选池中位数</th>
+<th class="r">前 5 均值跑赢池均值的天数</th><th class="r">前 5 − 池均（每期）</th><th class="r hidesm">Rank IC</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div><p class="sub" style="margin-top:8px">{title_note}</p>"""
 
-    # ---- 候选池数量折线图 ----
-    cand_svg = ""
-    cands = bt.get("candidates_per_chunk") or []
-    if len(cands) > 4:
-        W, H = 1000, 160
-        ml, mr, mt, mb = 44, 20, 10, 22
-        x0, x1, y0, y1 = ml, W - mr, mt, H - mb
-        vmax = max(c["n"] for c in cands) * 1.15 or 1
-        def X(i):
-            return x0 + (x1 - x0) * i / max(1, len(cands) - 1)
-        def Y(v):
-            return y1 - (y1 - y0) * v / vmax
-        p2 = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="候选池数量随时间">']
-        for k in range(5):
-            v = vmax * k / 4
-            p2.append(f'<line class="gridline" x1="{x0}" x2="{x1}" y1="{Y(v):.1f}" y2="{Y(v):.1f}"/>')
-            p2.append(f'<text class="axis-text" x="{x0-8}" y="{Y(v)+4:.1f}" text-anchor="end">{v:.0f}</text>')
-        d = "M" + " L".join(f"{X(i):.1f},{Y(c['n']):.1f}" for i, c in enumerate(cands))
-        p2.append(f'<path class="series-line" d="{d}" stroke="var(--series-1)"/>')
-        seen = set()
-        for i, c in enumerate(cands):
-            y = c["date"][:4]
-            if y not in seen:
-                seen.add(y)
-                p2.append(f'<text class="axis-text" x="{X(i):.1f}" y="{H-6}" text-anchor="middle">{y}</text>')
-        p2.append(f'<text class="axis-text" x="{x1+4}" y="{Y(cands[-1]["n"])+4:.1f}" fill="var(--series-1)" font-weight="600">{cands[-1]["n"]}</text>')
-        p2.append("</svg>")
-        cand_svg = ('<h3 class="sec" style="margin-top:20px">同一时刻符合条件的候选 ETF 数量（每半年一个点）</h3>'
-                    '<div class="chart cand-chart">' + "".join(p2) + '</div>')
 
-    # ---- 分区间表 ----
-    per_rows = []
-    for p in bt["periods"]:
-        per_rows.append(f"""<tr><td>{E(p['label'])}</td>
-<td class="r"><b>{p['cagr']*100:+.1f}%</b></td><td class="r">{p['mdd']*100:.1f}%</td>
-<td class="r">{p['sharpe']:.2f}</td>
-<td class="r muted">{p['no_defense_cagr']*100:+.1f}% / {p['no_defense_mdd']*100:.1f}%</td>
-<td class="r muted">{p['bench_cagr']*100:+.1f}%</td></tr>""")
-    per_table = "".join(per_rows)
+def section_live(daily):
+    live = daily["live"]
+    n = live["n"]
+    first = live["first"]
+    rows = []
+    for r in live["recent"][:15]:
+        cells = ""
+        for h in ("1", "5", "10"):
+            x = r["h"].get(h)
+            if not x:
+                cells += '<td class="r muted">待兑现</td>'
+                continue
+            ex = (x["top5"] - x["pool"]) if x.get("top5") is not None and x.get("pool") is not None else None
+            cells += f'<td class="r"{tone(ex)}>{signed_pct(x.get("top5"))}<div class="muted" style="font-size:11.5px">超额 {signed_pct(ex)}</div></td>'
+        mode = '<span class="badge def">防守</span>' if r["mode"] == "defense" else '<span class="badge keep">进攻</span>'
+        rows.append(f'<tr><td style="white-space:nowrap"><code>{r["signal_date"]}</code></td><td>{mode}</td>{cells}</tr>')
+    body = "".join(rows) or '<tr><td colspan="5" class="muted">台账刚建立，第一条推荐要等 1 个交易日后才能兑现。</td></tr>'
+    return f"""
+  <section class="card" id="live">
+    <div class="card-head"><div><h2>实盘推荐记录（样本外）</h2>
+      <p class="sub">从 {E(first or '—')} 起，每个交易日收盘后把当天的推荐写进 <code>track/predictions.jsonl</code>，写入后不再修改；到期后用真实开盘价自动计算收益。这一节的数字没有任何事后调整，是判断模型是否有效的最终依据。</p></div>
+      <div class="hint">已记录 {n} 个交易日</div></div>
+    {acc_table(live['summary'], '口径：信号日次日开盘买入，持有 1/5/10 个交易日后开盘卖出；"前 5 名"是模型排名前 5（不论当天是否防守），用于检验排序本身的准确度。')}
+    <h3 class="sec">最近 15 个信号日</h3>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>信号日</th><th>模式</th><th class="r">前 5 名 1 日</th><th class="r">5 日</th><th class="r">10 日</th></tr></thead>
+      <tbody>{body}</tbody></table></div>
+  </section>"""
 
-    # ---- 图 ----
-    curve = bt["curve"]
-    nav_svg = svg_line("nav", curve, ["nav", "bench"], lambda v: f"{v:.2f}", h=300, baseline=1.0)
-    dd_svg = svg_line("dd", bt["dd"], ["dd"], lambda v: f"{v*100:.0f}%", h=150, y0pad=0.03, baseline=0)
-    chart_data = json.dumps({"nav": curve, "dd": bt["dd"]}, ensure_ascii=False)
 
-    # ---- 分年柱状图（策略 vs 300） ----
-    yr_svg = yearly_bars(bt)
+def section_accuracy(daily):
+    sim = daily["simulated"]
+    a, z = sim["segments"]["dev"]
+    h0 = sim["segments"]["holdout"][0]
+    return f"""
+  <section class="card" id="accuracy">
+    <div class="card-head"><div><h2>历史准确度（模拟逐日推荐）</h2>
+      <p class="sub">把当前模型放回历史，每天都按同样规则出一次推荐，统计之后 1/5/10 个交易日的表现。开发期（{a[:4]}–{int(h0[:4]) - 1}）用来选模型；留出期（{h0[:4]} 起）选模型时没有看过，更接近真实水平。</p></div></div>
+    <h3 class="sec" style="margin-top:0">留出期 {h0[:4]} 起（未参与模型选择）</h3>
+    {acc_table(sim['by']['holdout'], '')}
+    <details><summary>开发期 {a[:4]}–{int(h0[:4]) - 1}（参与了模型选择，数字偏乐观）</summary>
+    {acc_table(sim['by']['dev'], '')}
+    </details>
+    <ul class="notes">
+      <li><b>怎么读</b>：随机挑 5 只，"跑赢候选池中位数"的期望是 50%；模型在留出期大约 53–55%。这是一个小但稳定的优势，不是"高准确率"。单只 ETF 一两天的涨跌主要由市场整体决定，任何模型都很难超过 60%。</li>
+      <li><b>Rank IC</b>：模型分数与未来收益排名的相关系数，0 表示没有预测力。量化选股里 0.03–0.05 已属于可用水平。</li>
+    </ul>
+  </section>"""
 
-    state_cls = "risk" if risk_on else "defense"
-    state_txt = "进攻" if risk_on else "防守"
-    state_desc = ("沪深300 位于年线上方，按评分持有 5 只 ETF。"
-                  if risk_on else "沪深300 位于年线下方，转为防守组合：国债 ETF + 红利低波 ETF。")
-    ma_txt = f"{reg['ma250']:.2f}" if reg["ma250"] else "—"
-    gap = reg["pct_from_ma"]
-    gap_txt = f"{gap*100:+.1f}%" if gap is not None else "—"
+
+def section_validation(daily):
+    val, state = daily["validation"], daily["state"]
+    champ = state["champion"]["name"]
+    rows = []
+    for nm, r in sorted(val["models"].items(), key=lambda kv: (kv[1]["role"] != "champion", -kv[1]["ic_mean"])):
+        role = '<span class="badge new">当前模型</span>' if r["role"] == "champion" else '<span class="badge keep">挑战者</span>'
+        t = r.get("t_vs_champ")
+        rows.append(f"""<tr><td><span class="nm">{E(nm)}</span> {role}</td>
+<td class="r"><b>{r['ic_mean']:+.3f}</b></td><td class="r">{plain_pct(r['ic_pos'], 0)}</td>
+<td class="r"{tone(r['top5_minus_pool'])}>{signed_pct(r['top5_minus_pool'])}</td>
+<td class="r">{plain_pct(r['top5_beat_med'])}</td>
+<td class="r hidesm">{'—' if t is None else f'{t:+.2f}'}</td></tr>""")
+    hist = []
+    for hst in reversed(state["history"][-8:]):
+        hist.append(f'<li><code>{E(hst["date"] or "建站")}</code> {E(hst.get("reason", ""))}'
+                    + (f'（{E(hst["from"])} → {E(hst["to"])}）' if hst.get("from") else "") + "</li>")
+    dec = val.get("decision")
+    today = (f'<p class="banner" style="margin:10px 0 0">今日自动晋级：{E(dec["from"])} → {E(dec["to"])}。{E(dec["reason"])}</p>'
+             if dec else '<p class="sub" style="margin-top:10px">今日检查结果：没有挑战者满足晋级条件，模型保持不变。</p>')
+    return f"""
+  <section class="card" id="validation">
+    <div class="card-head"><div><h2>每日自动验证与模型优化</h2>
+      <p class="sub">每天收盘后，用最近 {val['window'][0]} ~ {val['window'][1]} 已经兑现的数据，重新比较当前模型「{E(champ)}」和 {len(val['models']) - 1} 个挑战者的 {val['horizon']} 日预测力。{E(val['rule'])}。门槛定得高，是为了避免追着短期噪声换模型。</p></div></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>模型</th><th class="r">Rank IC 均值</th><th class="r">IC 为正的天数</th><th class="r">前 5 − 池均</th><th class="r">前 5 跑赢中位数</th><th class="r hidesm">相对当前模型 t 值</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody></table></div>
+    {today}
+    <h3 class="sec">模型变更记录</h3>
+    <ul class="notes">{''.join(hist)}</ul>
+  </section>"""
+
+
+def section_backtest(bt):
+    st = bt["stats"]
+    per = "".join(f"""<tr><td>{E(p['label'])}</td>
+<td class="r"><b>{p['cagr'] * 100:+.1f}%</b></td><td class="r">{p['mdd'] * 100:.1f}%</td>
+<td class="r">{p['sharpe']:.2f}</td><td class="r hidesm">{p['node_win'] * 100:.0f}%</td>
+<td class="r hidesm">{p['turnover']:.1f}</td>
+<td class="r muted">{p['no_defense_cagr'] * 100:+.1f}% / {p['no_defense_mdd'] * 100:.1f}%</td>
+<td class="r muted">{p['bench_cagr'] * 100:+.1f}%</td></tr>""" for p in bt["periods"])
+    yearly = "".join(
+        f'<tr><td>{y}</td><td class="r"{tone(v)}>{v * 100:+.1f}%</td><td class="r muted">{num(bt["bench_yearly"].get(y), lambda x: f"{x * 100:+.1f}%")}</td></tr>'
+        for y, v in sorted(bt["yearly"].items()))
+    nav_svg = svg_line("nav", bt["curve"], ["nav", "bench"], lambda v: f"{v:.2f}", h=300, baseline=1.0)
+    dd_svg = svg_line("dd", bt["dd"], ["dd"], lambda v: f"{v * 100:.0f}%", h=150, y0pad=0.03, baseline=0)
 
     def chip(label, value, sub):
         return f'<div class="kpi"><div class="l">{label}</div><div class="v">{value}</div><div class="d">{sub}</div></div>'
 
-    gen = sig["generated_at"].replace("T", " ")
+    ho = next(p for p in bt["periods"] if p["label"].startswith("留出"))
+    return f"""
+  <section class="card" id="backtest">
+    <div class="card-head"><div><h2>组合回测（当前模型）</h2>
+      <p class="sub">按推荐实际操作的结果：收盘出信号、次日开盘成交、单边成本 {bt['params']['cost'] * 100:.1f}%、跌破年线切防守。两条线都从 1.0 起算。</p></div></div>
+    <div class="kpis" style="margin:0 0 18px">
+      {chip("留出期年化（2022 起）", f"{ho['cagr'] * 100:.1f}%", f"沪深300 同期 {ho['bench_cagr'] * 100:+.1f}%")}
+      {chip("留出期最大回撤", f"{ho['mdd'] * 100:.1f}%", f"沪深300 {ho['bench_mdd'] * 100:.1f}%")}
+      {chip("完整区间年化", f"{st['cagr'] * 100:.1f}%", f"{bt['start'][:4]}–{bt['end'][:4]}，回撤 {st['mdd'] * 100:.1f}%")}
+      {chip("年单边换手", f"{st['turnover']:.1f} 倍", f"已扣 {bt['params']['cost'] * 100:.1f}% 单边成本")}
+    </div>
+    <div class="legend"><span class="key"><i></i>策略</span><span class="key b"><i></i>沪深300</span></div>
+    <h3 class="sec" style="margin-top:0">净值</h3>
+    <div class="chart nav-chart" data-k="nav">{nav_svg}<div class="tooltip"></div></div>
+    <h3 class="sec" style="margin-top:22px">回撤</h3>
+    <div class="chart dd-chart" data-k="dd">{dd_svg}<div class="tooltip"></div></div>
+    <div style="overflow-x:auto;margin-top:16px"><table>
+      <thead><tr><th>区间</th><th class="r">年化</th><th class="r">最大回撤</th><th class="r">夏普</th><th class="r hidesm">5日胜率</th><th class="r hidesm">年换手</th><th class="r">不用防守（年化 / 回撤）</th><th class="r">沪深300</th></tr></thead>
+      <tbody>{per}</tbody></table></div>
+    <details><summary>数据表：分年收益</summary>
+      <table style="margin-top:10px"><thead><tr><th>年份</th><th class="r">策略</th><th class="r">沪深300</th></tr></thead><tbody>{yearly}</tbody></table>
+    </details>
+  </section>"""
 
+
+def section_method(bt):
+    p = bt["params"]
+    return f"""
+  <section class="card" id="method">
+    <div class="cols">
+      <div>
+        <h2>方法</h2>
+        <ul class="notes">
+          <li><b>数据</b>：新浪财经 ETF 日线（份额折算处按价格跳变修补）与沪深300 日线，每个交易日收盘后自动更新。</li>
+          <li><b>候选池</b>：只做 A 股股票型 ETF（剔除货币、债券、商品、跨境）；近 20 日日均成交额 ≥ {p['min_amount'] / 1e4:.0f} 万元；上市满 {p['min_history']} 个交易日；同一指数（名称中"ETF"之前相同）每天只留成交额最大的一只。全部按当天能看到的数据判断，不用未来信息。</li>
+          <li><b>因子</b>：14 个价量特征（各周期涨跌、距均线、距高点、波动、成交额）。每天在候选池内转成百分位，模型只比较"同一天谁更好"，不预测大盘涨跌。</li>
+          <li><b>模型选择</b>：2016–2021 为开发期，比较单因子 IC、候选池门槛、8 个组合方案后选定当前模型；2022 起为留出期，只用来检验，选模型时没有看过。</li>
+          <li><b>每日验证</b>：当前模型和挑战者每天都记录推荐，用最近约两年的已兑现数据比较 10 日 Rank IC，挑战者显著更好（t ≥ 2.5）才替换；变更自动记录在页面上。</li>
+          <li><b>成交与防守</b>：收盘出信号、下一交易日开盘调仓，单边成本 {p['cost'] * 100:.1f}%；沪深300 低于 {p['defense_ma']} 日均线时换为 {p['defense_bond_w'] * 100:.0f}% 国债 ETF + {100 - p['defense_bond_w'] * 100:.0f}% 红利低波 ETF。</li>
+        </ul>
+      </div>
+      <div>
+        <h2>局限</h2>
+        <ul class="notes">
+          <li><b>预测力很弱</b>：留出期前 5 名跑赢候选池中位数的比例约 53–55%，随机为 50%。它能在大量交易日上累积出一点优势，不能保证任何一天、一周赚钱。</li>
+          <li><b>防守开关贡献了大部分回撤控制</b>：不用防守时留出期回撤明显更大，见回测表最后两列。</li>
+          <li><b>幸存者偏差</b>：候选池来自今天仍能在新浪取到行情的 ETF，已清盘的没有进入历史。</li>
+          <li><b>实盘记录才刚开始</b>：页面上的"历史准确度"是模拟，"实盘推荐记录"从台账建立当天起累计，样本足够之前请以前者为参考、以后者为准。</li>
+          <li><b>未模拟冲击成本</b>，不处理涨跌停与停牌排队。</li>
+        </ul>
+        <p class="sub" style="margin-top:14px">代码、推荐台账与模型变更记录都在 GitHub：<a href="https://github.com/jingyi22/etf-rotation" style="color:var(--series-1)">jingyi22/etf-rotation</a></p>
+      </div>
+    </div>
+  </section>"""
+
+
+def main():
+    daily = json.load(open(os.path.join(DATA_DIR, "daily.json"), encoding="utf-8"))
+    bt = json.load(open(os.path.join(DATA_DIR, "backtest.json"), encoding="utf-8"))
+    rec = daily["recommendation"]
+    gen = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
+    nav = '<nav class="toc">' + "".join(
+        f'<a href="#{a}">{b}</a>' for a, b in (("today", "今日推荐"), ("rank", "评分榜"), ("live", "实盘记录"),
+                                                ("accuracy", "历史准确度"), ("validation", "自动验证"),
+                                                ("backtest", "组合回测"), ("method", "方法与局限"))) + "</nav>"
+    chart_data = json.dumps({"nav": bt["curve"], "dd": bt["dd"]}, ensure_ascii=False)
     page = f"""<!DOCTYPE html>
-<html lang="zh-CN" data-theme="">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ETF 轮动参考 · 低波趋势 + 年线防守</title>
-<meta name="description" content="以公开数据回测的 ETF 日频轮动参考：低波与趋势评分、次日开盘调仓、年线防守。历史回测，非投资建议。">
+<title>ETF 轮动 · 每日推荐与自动验证</title>
+<meta name="description" content="每个交易日收盘后按模型给出下一交易日的 ETF 推荐，推荐写入台账后自动兑现评分，每日自动验证与模型晋级。历史回测与统计，不构成投资建议。">
 <style>{CSS}</style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>ETF 轮动参考</h1>
-      <p class="sub">低波 + 趋势评分选 ETF，沪深300 跌破年线切国债/红利防守 · 收盘出信号、次日开盘调仓</p>
+      <h1>ETF 轮动 · 每日推荐</h1>
+      <p class="sub">每个交易日收盘后按模型排名给出下一交易日开盘的持仓；推荐写入台账、到期自动验证；每日比较挑战者，显著更好才替换模型</p>
     </div>
     <div style="text-align:right">
-      <div class="updated">信号日期 {E(sig['asof'])} · 生成 {E(gen)}</div>
+      <div class="updated">信号日 {E(rec['signal_date'])} · 页面生成 {E(gen)}（北京时间）</div>
       <button class="theme-btn" id="theme" style="margin-top:6px">☾ 深色</button>
     </div>
   </header>
-
+  {nav}
   <div class="banner">
-    <div><b>这是历史回测，不是投资建议。</b>
-    回测含幸存者偏差与参数选择偏差：候选池是"今天还在交易"的 ETF，参数参考了同一段历史。
-    过去的表现不能预测未来，也不承诺任何收益。</div>
+    <div><b>这是模型推荐与统计记录，不是投资建议。</b>
+    模型在留出期只有很弱的预测优势，任何一天、一周都可能亏钱；过去的表现不代表未来，本站不承诺任何收益。</div>
   </div>
-
-  <section class="card">
-    <div class="card-head">
-      <div><h2>今日状态</h2><p class="sub">{E(state_desc)}</p></div>
-      <div class="hint">沪深300 {reg['hs300']:.2f} · 年线 {ma_txt}<br>偏离年线 {gap_txt}</div>
-    </div>
-    <div class="regime">
-      <div class="state {state_cls}"><span class="dot" style="background:{'var(--good)' if risk_on else 'var(--warning)'}"></span>{state_txt}</div>
-      <div>
-        <p><b>下一交易日开盘</b>按下表调仓；表中"新买"为相对上一交易日信号的变动。</p>
-        <p class="facts">候选池 {sig['universe_size']} 只（近 20 日日均成交额 ≥ {bt['params']['min_amount_cap']/1e8:.1f} 亿、上市 ≥ 60 个交易日、已按同指数去重）</p>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-    <table class="stat" style="margin-top:16px">
-      <thead><tr><th>代码</th><th>名称</th><th class="r">权重</th><th class="r hidesm">评分</th><th class="r hidesm">排名</th><th class="r">距年线</th><th class="r hidesm">日均成交额</th></tr></thead>
-      <tbody>{hold_table}</tbody>
-    </table></div>
-    <div class="kpis">
-      {chip("回测年化（2015 起）", pct(st['cagr']), f"沪深300 同期 {pct(bench['cagr'])}")}
-      {chip("最大回撤", pct(st['mdd']), f"沪深300 {pct(bench['mdd'])}")}
-      {chip("夏普（无风险 1.5%）", f"{st['sharpe']:.2f}", f"波动 {pct(st['vol'])}")}
-      {chip("年单边换手", f"{st['turnover']:.1f} 倍", f"已扣 {bt['params']['cost']*100:.1f}% 单边成本")}
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="card-head"><div><h2>净值与回撤</h2><p class="sub">扣费后，收盘信号、次日开盘成交；两条线都从 1.0 起算</p></div></div>
-    <div class="legend"><span class="key"><i></i>策略</span><span class="key b"><i></i>沪深300</span></div>
-    <h3 class="sec" style="margin-top:0">净值</h3>
-    <div class="chart nav-chart" data-k="nav">{nav_svg}<div class="tooltip"></div></div>
-    <h3 class="sec" style="margin-top:22px">回撤</h3>
-    <div class="chart dd-chart" data-k="dd">{dd_svg}<div class="tooltip"></div></div>
-    <details><summary>数据表：分年收益</summary>
-      <table style="margin-top:10px"><thead><tr><th>年份</th><th class="r">策略</th><th class="r">沪深300</th></tr></thead>
-      <tbody>{yearly_table}</tbody></table>
-    </details>
-  </section>
-
-  <section class="card">
-    <div class="card-head"><div><h2>稳健性：换一个起点还成立吗</h2>
-      <p class="sub">同一套参数，只改回测起点。收益集中在 2024 年以后，早年的结果并不亮眼。</p></div></div>
-    <div style="overflow-x:auto">
-    <table>
-      <thead><tr><th>区间</th><th class="r">年化</th><th class="r">最大回撤</th><th class="r">夏普</th><th class="r">不用防守（年化 / 回撤）</th><th class="r">沪深300 年化</th></tr></thead>
-      <tbody>{per_table}</tbody>
-    </table></div>
-    <div style="margin-top:14px">{yr_svg}</div>
-    {cand_svg}
-    <ul class="notes">
-      <li>收益不均匀：2015–2018 年化约 0%，2019–2020 年化 7.7%，2021–2023 年化 −1.3%，2024 年以来年化 21%。2024 年以来这一段是全部超额的主要来源，也是最大的不确定性。</li>
-      <li>早年候选池很少：{bt['coverage']['first_full_year']} 年起可选 ETF 才超过 100 只；更早的年份里，同一时刻可交易的 ETF 往往不到 10 只，"选前 5"接近满仓持有全池。</li>
-      <li>"不用防守"一列是把年线开关关掉的结果：防守组合在熊市压低回撤，代价是牛市少赚。</li>
-      <li>参数没有按年份单独调优，但评分因子的取舍参考了 2015–2026 全样本的 IC，仍属样本内。</li>
-    </ul>
-  </section>
-
-  <section class="card">
-    <div class="card-head"><div><h2>当前评分榜</h2><p class="sub">候选池按合成分排序；"持有"为上一交易日已经在仓的 ETF</p></div></div>
-    <div style="overflow-x:auto">
-    <table>
-      <thead><tr><th class="r" style="width:36px">#</th><th>代码</th><th>名称</th><th class="r">评分</th><th class="r">距年线</th><th class="r">20日波动</th><th class="r hidesm">日均成交额</th></tr></thead>
-      <tbody>{top_table}</tbody>
-    </table></div>
-    <details><summary>评分怎么算</summary>
-      <ul class="notes">
-        <li><b>距年线</b>（权重 0.6）：收盘价 / 250 日均线 − 1，越高越好。对应"站上年线的 ETF 未来 5 日更可能上涨"。</li>
-        <li><b>20 日波动</b>（权重 −0.4）：日收益标准差，越低越好。低波在 ETF 池里有稳定的正超额。</li>
-        <li>两项各自在当日候选池内做 z-score 后加权，再按排名取前 5；已持有的 ETF 只要排名没有跌出前 15 就继续持有（排名缓冲，显著降低换手）。</li>
-        <li>为什么不是"超跌反弹"：逐日 Rank IC 检验显示，20 日涨跌、60 日回撤等反转因子在全样本上 IC 接近 0 且方向反复；趋势与波动两个因子方向更稳定。方法与 IC 表见下节。</li>
-      </ul>
-    </details>
-  </section>
-
-  <section class="card">
-    <div class="card-head"><div><h2>最近调仓记录</h2><p class="sub">只列持仓或状态发生变化的日子（最近 12 次）</p></div></div>
-    <table>
-      <thead><tr><th>信号日</th><th>买入 / 切换</th><th class="hidesm">卖出</th></tr></thead>
-      <tbody>{rec_table}</tbody></table>
-  </section>
-
-  <section class="card">
-    <div class="cols">
-      <div>
-        <h2>方法</h2>
-        <ul class="notes">
-          <li><b>收益来源</b>：日频在候选池里挑"站上年线 + 低波"的 5 只，趋势跟随为主；沪深300 跌破年线时切国债/红利防守。评分来自逐日 Rank IC 检验：距年线（+0.029）与低波（−0.038）方向最稳定，20 日涨跌、60 日回撤等反转因子全样本 IC 接近 0。</li>
-          <li><b>数据</b>：新浪财经 ETF 日线（不复权，份额折算处按价格跳变与成交额连续性识别并修补）与沪深300 指数日线，每日收盘后更新。</li>
-          <li><b>候选池</b>：剔除货币、债券、黄金商品、跨境（港股/美股/日经等）；近 20 日日均成交额 ≥ {bt['params']['min_amount']/1e8:.0f} 百万元（{bt['params']['cap_from'][:4]} 年起提高到 {bt['params']['min_amount_cap']/1e8:.0f} 百万元，因为 ETF 数量已扩容）；上市 ≥ 60 个交易日；近 120 日收益相关 &gt; 0.95 视为同一指数，只保留成交额最大的一只。</li>
-          <li><b>选样</b>：距年线与低波两项合成评分排名前 {bt['params']['n_hold']}，等权；已持有且排名在前 {bt['params']['n_hold'] + bt['params']['rank_buffer']} 的继续持有。</li>
-          <li><b>防守</b>：沪深300 收盘低于 250 日均线时，换为 {int(bt['params']['defense_bond_w']*100)}% 国债 ETF（511010）+ {100-int(bt['params']['defense_bond_w']*100)}% 红利低波 ETF。</li>
-          <li><b>成交与成本</b>：收盘出信号、下一交易日开盘调仓，单边成本 {bt['params']['cost']*100:.1f}%（佣金 + 滑点），停牌按最近有效收盘价记账。</li>
-        </ul>
-      </div>
-      <div>
-        <h2>局限</h2>
-        <ul class="notes">
-          <li><b>幸存者偏差</b>：候选池来自"今天仍在交易、且能在新浪拿到行情"的 ETF，已退市的没有进入回测。</li>
-          <li><b>样本内参数</b>：评分因子与缓冲宽度是先看全样本 IC 与回测再定的，2024 年后的表现好看有这一层原因。</li>
-          <li><b>没有成交额冲击</b>：回测按收盘/开盘价成交，未模拟大额买入对盘口的影响。</li>
-          <li><b>数据缺口</b>：新浪不复权序列的份额折算修补是规则识别，个别冷门 ETF 可能漏判；QDII/跨境已排除以避开溢价与折算。</li>
-          <li><b>频率</b>：日频检查、次日开盘调仓，盘中不做任何干预；不处理涨跌停排队。</li>
-          <li><b>近期回撤偏大</b>：2026 年内最大回撤 18%；一年约 5~10 次持仓变动，单次决策的胜率约 56%，连亏几轮是正常分布的一部分。</li>
-        </ul>
-        <p class="sub" style="margin-top:14px">代码与数据自动更新于 GitHub Actions，仓库：<a href="https://github.com/jingyi22/etf-rotation" style="color:var(--series-1)">jingyi22/etf-rotation</a></p>
-      </div>
-    </div>
-  </section>
-
+  {section_today(daily, bt)}
+  {section_ranking(daily)}
+  {section_live(daily)}
+  {section_accuracy(daily)}
+  {section_validation(daily)}
+  {section_backtest(bt)}
+  {section_method(bt)}
   <footer>
-    <b>免责声明</b>：本站仅为公开数据上的历史回测与规则展示，不构成证券投资咨询或买卖建议；ETF 交易有风险，历史收益不代表未来表现。
+    <b>免责声明</b>：本站内容是公开行情数据上的模型输出、历史回测与统计，不构成证券投资咨询或买卖建议；ETF 交易有风险，历史收益不代表未来表现。
     数据来自新浪财经公开行情，可能存在缺口或错误，以交易所与基金公告为准。
   </footer>
 </div>
@@ -568,51 +630,15 @@ def main():
 </html>
 """
     os.makedirs(DOCS_DIR, exist_ok=True)
-    with open(os.path.join(DOCS_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(page)
-    # 同时复制一份原始数据，便于查看
-    with open(os.path.join(DOCS_DIR, "signals.json"), "w", encoding="utf-8") as f:
-        json.dump(sig, f, ensure_ascii=False, indent=1)
-    print(f"写入 docs/index.html（{len(page)/1024:.0f} KB）")
-
-
-def yearly_bars(bt):
-    """分年收益：策略 vs 沪深300，小倍数柱状。"""
-    ys = sorted(bt["yearly"])
-    n = len(ys)
-    W, H = 1000, 190
-    ml, mr, mt, mb = 44, 12, 10, 24
-    x0, x1, y0, y1 = ml, W - mr, mt, H - mb
-    vals = [bt["yearly"][y] for y in ys] + [bt["bench_yearly"].get(y, 0) or 0 for y in ys]
-    vmin, vmax = min(vals + [0]), max(vals + [0])
-    pad = (vmax - vmin) * 0.1 or 0.05
-    vmin, vmax = vmin - pad, vmax + pad
-    def Y(v):
-        return y1 - (y1 - y0) * (v - vmin) / (vmax - vmin)
-    group_w = (x1 - x0) / n
-    bw = min(16, group_w * 0.28)
-    parts = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="分年收益对比">']
-    # 零线与网格
-    for v in (0.0, vmax - pad, (vmax + vmin) / 2):
-        yy = Y(v)
-        parts.append(f'<line class="gridline" x1="{x0}" x2="{x1}" y1="{yy:.1f}" y2="{yy:.1f}"/>')
-        parts.append(f'<text class="axis-text" x="{x0-8}" y="{yy+4:.1f}" text-anchor="end">{v*100:.0f}%</text>')
-    for i, y in enumerate(ys):
-        cx = x0 + group_w * (i + 0.5)
-        a = bt["yearly"][y]
-        b = bt["bench_yearly"].get(y)
-        ya, yz = Y(a), Y(0)
-        top, hgt = min(ya, yz), abs(ya - yz)
-        parts.append(f'<rect x="{cx-bw-1:.1f}" y="{top:.1f}" width="{bw}" height="{max(1,hgt):.1f}" rx="3" fill="var(--series-1)"/>')
-        if b is not None:
-            yb = Y(b)
-            top, hgt = min(yb, yz), abs(yb - yz)
-            parts.append(f'<rect x="{cx+1:.1f}" y="{top:.1f}" width="{bw}" height="{max(1,hgt):.1f}" rx="3" fill="var(--series-2)"/>')
-        parts.append(f'<text class="axis-text" x="{cx:.1f}" y="{H-7}" text-anchor="middle">{y}</text>')
-    parts.append("</svg>")
-    return ('<div class="legend"><span class="key"><i style="width:10px;height:10px;border:0;background:var(--series-1)"></i>策略</span>'
-            '<span class="key b"><i style="width:10px;height:10px;border:0;background:var(--series-2)"></i>沪深300</span></div>'
-            + "".join(parts))
+    with open(os.path.join(DOCS_DIR, "index.html"), "w", encoding="utf-8") as fh:
+        fh.write(page)
+    with open(os.path.join(DOCS_DIR, "today.json"), "w", encoding="utf-8") as fh:
+        json.dump({k: rec[k] for k in ("signal_date", "exec", "model", "mode", "hold", "sells", "ranking")},
+                  fh, ensure_ascii=False, indent=1)
+    sig = os.path.join(DOCS_DIR, "signals.json")
+    if os.path.exists(sig):
+        os.remove(sig)
+    print(f"写入 docs/index.html（{len(page) / 1024:.0f} KB）与 docs/today.json")
 
 
 if __name__ == "__main__":
