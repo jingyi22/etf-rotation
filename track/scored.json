@@ -1,1 +1,1 @@
-{"rows": [{"signal_date": "2026-11-20", "model": "趋势+低波", "mode": "defense", "h": {}}], "summary": {"1": {"n": 0}, "5": {"n": 0}, "10": {"n": 0}}, "n_predictions": 1, "first": "2026-11-20"}
+{"rows": [{"signal_date": "2026-11-20", "model": "趋势+低波", "mode": "defense", "h": {}}, {"signal_date": "2026-11-23", "model": "趋势+低波", "mode": "defense", "h": {}}], "summary": {"1": {"n": 0}, "5": {"n": 0}, "10": {"n": 0}}, "n_predictions": 2, "first": "2026-11-20"}
