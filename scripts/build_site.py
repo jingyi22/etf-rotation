@@ -92,7 +92,7 @@ h3{font-size:15px;margin:0 0 8px}
 .kpi .d{font-size:12px;color:var(--text-secondary)}
 table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
 th{color:var(--text-muted);font-weight:500;text-align:left;font-size:12px;padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
-th.r,td.r{text-align:right;padding-right:0}
+th.r,td.r{text-align:right;padding-right:0;padding-left:14px}
 td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line)}
 tr:last-child td{border-bottom:none}
 td code{font-family:var(--mono);font-size:12.5px;color:var(--text-secondary)}
@@ -120,12 +120,12 @@ td .nm{font-weight:520}
 .legend .key.b i{border-top-color:var(--series-2)}
 .tooltip{position:absolute;pointer-events:none;max-width:220px;background:var(--surface-1);border:1px solid var(--line-strong);
   border-radius:8px;padding:9px 11px;font-size:12.5px;box-shadow:0 4px 16px rgba(0,0,0,.12);opacity:0;
-  transition:opacity .08s;z-index:5;min-width:150px}
+  transition:opacity .08s;z-index:5;width:230px}
 .tooltip .t{color:var(--text-muted);font-size:11.5px;margin-bottom:4px;font-variant-numeric:tabular-nums}
-.tooltip .row{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.tooltip .row{display:flex;align-items:center;justify-content:space-between;gap:14px;white-space:nowrap}
 .tooltip .row i{display:inline-block;width:14px;height:0;border-top:2px solid var(--series-1)}
 .tooltip .row.b i{border-top-color:var(--series-2)}
-.tooltip .row b{font-variant-numeric:tabular-nums;font-weight:600;margin-left:auto;padding-left:10px}
+.tooltip .row b{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;flex-shrink:0}
 .tooltip .row span{color:var(--text-secondary)}
 details{border-top:1px solid var(--line);padding:10px 0 0;margin-top:8px}
 details summary{cursor:pointer;color:var(--text-secondary);font-size:13px;list-style:none}
@@ -148,6 +148,8 @@ footer b{color:var(--text-secondary)}
   .card{padding:16px}
   th,td{padding-right:6px}
   .hidesm{display:none}
+  .card-head{flex-direction:column;align-items:flex-start;gap:4px}
+  .card-head .hint{text-align:left}
 }
 """
 
@@ -206,7 +208,8 @@ JS = r"""
     var isDD=el.getAttribute('data-k')==='dd';
     attach(el,data, isDD
       ? [{k:'dd',name:'回撤',fmt:function(v){return (v*100).toFixed(1)+'%';}}]
-      : [{k:'nav',name:'策略净值'},{k:'bench',cls:'b',name:'沪深300'}]);
+      : [{k:'nav',name:'策略净值',fmt:function(v){return v.toFixed(3);}},
+         {k:'bench',cls:'b',name:'沪深300',fmt:function(v){return v.toFixed(3);}}]);
   });
   // 表格视图开关
   document.querySelectorAll('[data-tbl]').forEach(function(b){
@@ -311,7 +314,7 @@ def main():
 <td><code>{E(h['code'])}</code></td>
 <td><span class="nm">{E(h['name'])}</span>{badge}</td>
 <td class="r">{h['weight']*100:.0f}%</td>
-<td class="r">{h['score'] if h['score'] is not None else '—'}</td>
+<td class="r hidesm">{h['score'] if h['score'] is not None else '—'}</td>
 <td class="r hidesm">{h['rank'] if h['rank'] else '—'}</td>
 <td class="r">{cells(h['dist252'], lambda v: f"{v*100:+.1f}%")}</td>
 <td class="r hidesm">{cells(h['amt_yi'], lambda v: f"{v:.2f} 亿")}</td>
@@ -336,13 +339,14 @@ def main():
     # ---- 调仓记录 ----
     rec_html = []
     for r in sig["recent"]:
-        stt = '<span class="badge def">防守</span>' if r["state"] == "defense" else ""
-        names = []
-        for h in r["hold"]:
-            cls = {"buy": "buy", "keep": "keep", "init": "keep"}.get(h["delta"], "keep")
-            names.append(f'<span class="badge {cls}">{E(h["name"])}</span>')
-        rec_html.append(f'<tr><td><code>{r["signal_date"]}</code></td><td>{stt}{" ".join(names)}</td></tr>')
-    rec_table = "".join(rec_html) or '<tr><td colspan="2" class="muted">暂无</td></tr>'
+        stt = '<span class="badge def">转防守</span>' if r["switch"] and r["state"] == "defense" else (
+            '<span class="badge buy">转进攻</span>' if r["switch"] else "")
+        buys = " ".join(f'<span class="badge buy">买 {E(h["name"])}</span>' for h in r["buy"]) or '<span class="muted">—</span>'
+        sells = " ".join(f'<span class="badge sell">卖 {E(h["name"])}</span>' for h in r["sell"]) or '<span class="muted">—</span>'
+        rec_html.append(f'<tr><td style="white-space:nowrap"><code>{r["signal_date"]}</code>'
+                        f'<div class="muted" style="font-size:12px">收盘信号</div></td>'
+                        f'<td>{stt}{buys}</td><td class="hidesm">{sells}</td></tr>')
+    rec_table = "".join(rec_html) or '<tr><td colspan="3" class="muted">近一年没有调仓</td></tr>'
 
     # ---- 分年表 ----
     yearly_rows = []
@@ -458,8 +462,8 @@ def main():
       </div>
     </div>
     <div style="overflow-x:auto">
-    <table style="margin-top:16px">
-      <thead><tr><th>代码</th><th>名称</th><th class="r">权重</th><th class="r">评分</th><th class="r hidesm">排名</th><th class="r">距年线</th><th class="r hidesm">日均成交额</th></tr></thead>
+    <table class="stat" style="margin-top:16px">
+      <thead><tr><th>代码</th><th>名称</th><th class="r">权重</th><th class="r hidesm">评分</th><th class="r hidesm">排名</th><th class="r">距年线</th><th class="r hidesm">日均成交额</th></tr></thead>
       <tbody>{hold_table}</tbody>
     </table></div>
     <div class="kpis">
@@ -473,6 +477,7 @@ def main():
   <section class="card">
     <div class="card-head"><div><h2>净值与回撤</h2><p class="sub">扣费后，收盘信号、次日开盘成交；两条线都从 1.0 起算</p></div></div>
     <div class="legend"><span class="key"><i></i>策略</span><span class="key b"><i></i>沪深300</span></div>
+    <h3 class="sec" style="margin-top:0">净值</h3>
     <div class="chart nav-chart" data-k="nav">{nav_svg}<div class="tooltip"></div></div>
     <h3 class="sec" style="margin-top:22px">回撤</h3>
     <div class="chart dd-chart" data-k="dd">{dd_svg}<div class="tooltip"></div></div>
@@ -519,7 +524,9 @@ def main():
 
   <section class="card">
     <div class="card-head"><div><h2>最近调仓记录</h2><p class="sub">只列持仓或状态发生变化的日子（最近 12 次）</p></div></div>
-    <table><tbody>{rec_table}</tbody></table>
+    <table>
+      <thead><tr><th>信号日</th><th>买入 / 切换</th><th class="hidesm">卖出</th></tr></thead>
+      <tbody>{rec_table}</tbody></table>
   </section>
 
   <section class="card">
@@ -543,7 +550,7 @@ def main():
           <li><b>没有成交额冲击</b>：回测按收盘/开盘价成交，未模拟大额买入对盘口的影响。</li>
           <li><b>数据缺口</b>：新浪不复权序列的份额折算修补是规则识别，个别冷门 ETF 可能漏判；QDII/跨境已排除以避开溢价与折算。</li>
           <li><b>频率</b>：日频检查、次日开盘调仓，盘中不做任何干预；不处理涨跌停排队。</li>
-          <li><b>近期回撤偏大</b>：2026 年内最大回撤 18%，发生在净值高点之后；一年 5~10 次调仓，单次决策的胜率约 56%，连亏几轮是正常分布的一部分。</li>
+          <li><b>近期回撤偏大</b>：2026 年内最大回撤 18%；一年约 5~10 次持仓变动，单次决策的胜率约 56%，连亏几轮是正常分布的一部分。</li>
         </ul>
         <p class="sub" style="margin-top:14px">代码与数据自动更新于 GitHub Actions，仓库：<a href="https://github.com/jingyi22/etf-rotation" style="color:var(--series-1)">jingyi22/etf-rotation</a></p>
       </div>

@@ -183,18 +183,23 @@ def main():
         if len(top) >= 15:
             break
 
-    # 最近调仓记录
+    # 最近调仓记录：回扫全部日志，取最近 12 次持仓或状态变化
     recent = []
-    for k in range(max(0, len(res["log"]) - 30), len(res["log"])):
-        lg = res["log"][k]
-        prev = set(c for c, _ in (res["log"][k - 1]["hold"] if k > 0 else []))
-        cur = set(c for c, _ in lg["hold"])
-        if k == 0 or prev != cur or lg["state"] != res["log"][k - 1]["state"]:
+    for k in range(len(res["log"]) - 1, 0, -1):
+        lg, pf = res["log"][k], res["log"][k - 1]
+        prev = {c for c, _ in pf["hold"]}
+        cur = {c for c, _ in lg["hold"]}
+        if prev != cur or lg["state"] != pf["state"]:
+            prev_names = {c: n for c, n in pf["hold"]}
+            cur_names = {c: n for c, n in lg["hold"]}
             recent.append({"signal_date": lg["date"], "state": lg["state"],
-                           "hold": [{"code": c, "name": n,
-                                     "delta": ("buy" if c not in prev else "keep") if k > 0 else "init"}
-                                    for c, n in lg["hold"]]})
-    recent = recent[::-1][:12]
+
+                           "buy": [{"code": c, "name": cur_names[c]} for c in sorted(cur - prev)],
+                           "sell": [{"code": c, "name": prev_names[c]} for c in sorted(prev - cur)],
+                           "switch": lg["state"] != pf["state"],
+                           "state_from": pf["state"]})
+            if len(recent) >= 12:
+                break
 
     sig = {
         "asof": last_date,

@@ -1,6 +1,6 @@
 {
  "asof": "2026-11-20",
- "generated_at": "2026-11-23T11:36:22",
+ "generated_at": "2026-11-23T11:42:17",
  "regime": {
   "risk_on": false,
   "hs300": 3954.56,
@@ -199,7 +199,268 @@
   }
  ],
  "universe_size": 25,
- "recent": [],
+ "recent": [
+  {
+   "signal_date": "2026-08-19",
+   "state": "defense",
+   "buy": [
+    {
+     "code": "511010",
+     "name": "国债ETF国泰"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    },
+    {
+     "code": "510210",
+     "name": "上证指数ETF富国"
+    }
+   ],
+   "switch": true,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2026-08-05",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    },
+    {
+     "code": "510210",
+     "name": "上证指数ETF富国"
+    }
+   ],
+   "sell": [
+    {
+     "code": "511010",
+     "name": "国债ETF国泰"
+    }
+   ],
+   "switch": true,
+   "state_from": "defense"
+  },
+  {
+   "signal_date": "2026-07-28",
+   "state": "defense",
+   "buy": [
+    {
+     "code": "511010",
+     "name": "国债ETF国泰"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    },
+    {
+     "code": "159981",
+     "name": "能源化工ETF建信"
+    }
+   ],
+   "switch": true,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2026-07-21",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    },
+    {
+     "code": "159981",
+     "name": "能源化工ETF建信"
+    }
+   ],
+   "sell": [
+    {
+     "code": "511010",
+     "name": "国债ETF国泰"
+    }
+   ],
+   "switch": true,
+   "state_from": "defense"
+  },
+  {
+   "signal_date": "2026-07-17",
+   "state": "defense",
+   "buy": [
+    {
+     "code": "511010",
+     "name": "国债ETF国泰"
+    },
+    {
+     "code": "515100",
+     "name": "红利低波100ETF景顺"
+    },
+    {
+     "code": "515300",
+     "name": "300红利低波ETF嘉实"
+    },
+    {
+     "code": "515450",
+     "name": "红利低波50ETF南方"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    },
+    {
+     "code": "159667",
+     "name": "工业母机ETF国泰"
+    },
+    {
+     "code": "159732",
+     "name": "消费电子ETF华夏"
+    },
+    {
+     "code": "510210",
+     "name": "上证指数ETF富国"
+    },
+    {
+     "code": "588030",
+     "name": "科创100ETF博时"
+    }
+   ],
+   "switch": true,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2026-05-29",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159732",
+     "name": "消费电子ETF华夏"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159566",
+     "name": "储能电池ETF易方达"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2026-05-11",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159667",
+     "name": "工业母机ETF国泰"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159755",
+     "name": "电池ETF广发"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2025-12-12",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159516",
+     "name": "半导体设备ETF国泰"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159875",
+     "name": "新能源ETF嘉实"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2025-11-28",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159566",
+     "name": "储能电池ETF易方达"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159713",
+     "name": "稀土ETF富国"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2025-11-11",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159875",
+     "name": "新能源ETF嘉实"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159608",
+     "name": "稀有金属ETF广发"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2025-10-13",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159608",
+     "name": "稀有金属ETF广发"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159869",
+     "name": "游戏ETF华夏"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  },
+  {
+   "signal_date": "2025-09-12",
+   "state": "risk",
+   "buy": [
+    {
+     "code": "159755",
+     "name": "电池ETF广发"
+    }
+   ],
+   "sell": [
+    {
+     "code": "159887",
+     "name": "银行ETF富国"
+    }
+   ],
+   "switch": false,
+   "state_from": "risk"
+  }
+ ],
  "universe": [
   {
    "code": "159516",
