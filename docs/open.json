@@ -1,19 +1,19 @@
 {
- "trade_date": "2026-11-24",
- "signal_date": "2026-11-23",
+ "trade_date": "2026-11-25",
+ "signal_date": "2026-11-24",
  "mode": "defense",
  "model": "趋势+低波",
  "rule": "新买入高开>2%不追，顺延下一名",
- "reviewed_at": "2026-11-24T09:26:02+08:00",
- "quote_time": "09:25:57",
+ "reviewed_at": "2026-11-25T09:28:07+08:00",
+ "quote_time": "09:28:13",
  "note": "防守模式：开盘不调整",
  "hold": [
   {
    "code": "511010",
    "name": "国债ETF国泰",
    "weight": 0.6,
-   "gap": -0.0002,
-   "open": 141.37,
+   "gap": -0.0,
+   "open": 141.437,
    "rank": null,
    "changed": false
   },
@@ -21,8 +21,8 @@
    "code": "515300",
    "name": "300红利低波ETF嘉实",
    "weight": 0.1333,
-   "gap": -0.0021,
-   "open": 1.413,
+   "gap": 0.0,
+   "open": 1.42,
    "rank": 2,
    "changed": false
   },
@@ -30,16 +30,16 @@
    "code": "515450",
    "name": "红利低波50ETF南方",
    "weight": 0.1333,
-   "gap": -0.014,
-   "open": 1.481,
-   "rank": 4,
+   "gap": 0.0013,
+   "open": 1.507,
+   "rank": 6,
    "changed": false
   },
   {
    "code": "515100",
    "name": "红利低波100ETF景顺",
    "weight": 0.1333,
-   "gap": -0.0034,
+   "gap": 0.0,
    "open": 1.466,
    "rank": 5,
    "changed": false
